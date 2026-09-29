@@ -39,7 +39,7 @@ log = logging.getLogger(__name__)
 #: not something to be summarised.
 MIN_ENRICHABLE_CHARS = 15
 MAX_ENRICH_CHARS = 24_000
-ENRICH_TIMEOUT = 90.0
+ENRICH_TIMEOUT = 30.0
 #: Nobody is waiting on this, so it walks further than a turn would. The journal's
 #: reasoning, unchanged.
 BACKGROUND_FALLBACK_LINKS = 4
@@ -256,6 +256,8 @@ REAL_TEXT_SOURCES = (
     "caption and transcript",
     "visual content",
     "caption and visual content",
+    "transcript and visual content",
+    "caption and transcript and visual content",
     "slide analysis",
     "caption and slide analysis",
     "page",
@@ -265,7 +267,7 @@ REAL_TEXT_SOURCES = (
 )
 
 PROMPT = """\
-You are describing one thing the user saved, using only the text below.
+You are an expert knowledge curator extracting high-value synthesis, concrete concepts, and actionable insights from saved material.
 
 Reply with JSON and nothing else:
 
@@ -282,20 +284,22 @@ Rules:
   - "tool" for software, developer tools, AI apps, SaaS, hardware, tech utilities.
   - "book" for books, reading lists, literature, papers.
   - "general" for other topics only when none of the above fit.
-- summary: two to four sentences on what this is about, in plain language. No preamble, no "this video discusses".
-- tags: two to three lowercase canonical topic words (e.g. ai, algorithms, programming, tools, design, cinema, streaming, data-science, reading). For any movies, series, shows, actors, or films, always use "cinema" or "streaming" as the primary tag -- NEVER tag movies or entertainment with "society".
-- resources: concrete named things the text names that the user could go and find or watch:
-  - movie/show: title, platform/genre, why to watch.
-  - travel/destination: city/country, spot name, best to visit.
+- summary: Two to three dense, high-signal sentences stating the core thesis, actionable takeaway, technique, or valuable concepts directly.
+  CRITICAL NEGATIVE CONSTRAINTS:
+  * NEVER use meta-commentary: DO NOT say "This is a social media post/caption...", "The creator/author talks about...", "This video announces...", "The post features...", or "In this clip...".
+  * State the actual subject matter and insights directly as factual knowledge. Focus on what is useful, actionable, or notable (tools used, workflows explained, book/movie plot/analysis, key lessons).
+- tags: two to three lowercase canonical topic words (e.g. ai, algorithms, programming, tools, design, cinema, streaming, data-science, reading). For movies/series/actors/films, always use "cinema" or "streaming" as primary tag.
+- resources: extract concrete named things the text names that the user could go and find, use, read, visit, or watch:
+  - book: title, author, key context.
+  - tool/product: app/software/hardware name, what it does.
+  - movie/show: title, genre/platform, key context.
   - food/restaurant/cafe/recipe: dish name, restaurant/cafe, cuisine.
-  - tool/product: app name, utility, hardware.
-  - book: title, author.
-  - place/person/link/other.
+  - travel/destination: city/country, spot name.
+  - link/person/place/other: exact named entity, handles, or external services.
   `type` must be one of movie|show|travel|destination|food|restaurant|cafe|\
 recipe|tool|product|book|place|person|link|other.
-  `detail` is key information in ten words or fewer. For `url`, provide the direct link from the text or the official tool/service domain (e.g. "chatgpt.com", "github.com"). For movies/shows, url may be omitted.
-- An empty list is the right answer when the text names nothing. Padding a list \
-with things that were not mentioned is the main failure mode here.
+  `detail` is key information in ten words or fewer. For `url`, provide the direct link from the text or the official domain (e.g. "github.com", "goodreads.com", "chatgpt.com").
+- An empty list is the right answer when the text names nothing. Do not invent entities.
 - If the text is too thin to say anything true about, reply \
 {"category": "general", "summary": null, "tags": [], "resources": []}."""
 
@@ -713,7 +717,8 @@ async def _ask(
             )
         return Enrichment(note=f"{provider or 'the model'} could not be reached: {exc}")
 
-    parsed = parse_enrichment(response.text or "", source_text=source_text)
+    raw_text = getattr(response, "text", "") or ""
+    parsed = parse_enrichment(raw_text, source_text=source_text)
     if parsed is None:
         return Enrichment(
             note="the model did not answer in the expected format", provider=provider, model=model

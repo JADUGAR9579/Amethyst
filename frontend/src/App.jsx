@@ -5,7 +5,7 @@ import BrandMark from './components/BrandMark.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import CommandPalette from './components/CommandPalette.jsx'
 import Shortcuts from './components/Shortcuts.jsx'
-import OnboardingWizard from './components/OnboardingWizard.jsx'
+import SplashScreenWizard from './components/SplashScreenWizard.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import PanelResizer from './components/PanelResizer.jsx'
 import UserMenu from './components/UserMenu.jsx'
@@ -24,6 +24,7 @@ import { usePhone } from './hooks/useMediaQuery.js'
 import { safeStorage } from './lib/storage.js'
 import Chat from './views/Chat.jsx'
 import MobileNav from './components/MobileNav.jsx'
+import { Toaster } from './components/application/notifications'
 
 /* The workbench.
 
@@ -218,29 +219,17 @@ function WorkbenchBar() {
       {autoHideTopBar && <div className="wb-bar-hover-trigger" />}
       <header className={`wb-bar${autoHideTopBar ? ' wb-bar--autohide' : ''}`}>
         <div className="wb-bar-left">
-          {(!railOpen || compact) && (
+          {compact && !railOpen && (
             <div className="wb-bar-toggle-group">
               <button
                 type="button"
                 className="wb-icon-btn wb-sidebar-trigger"
                 onClick={toggleRail}
-                title={`Open sidebar — ${MOD_LABEL}+B`}
-                aria-label="Open sidebar"
+                title={`Open navigation — ${MOD_LABEL}+B`}
+                aria-label="Open navigation"
               >
                 <Icon name="sidebar" size={17} />
               </button>
-              <div
-                className="wb-bar-brand-compact"
-                onClick={() => setView('chat')}
-                title="Amethyst Home"
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter') setView('chat') }}
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}
-              >
-                <BrandMark size={22} glow />
-                <span className="wb-bar-brand-text">AMETHYST</span>
-              </div>
             </div>
           )}
         </div>
@@ -260,7 +249,7 @@ function WorkbenchBar() {
           </button>
         </div>
 
-        {/* Right Icon Actions: Artifact Panel + Settings + Brand Logo */}
+        {/* Right Icon Actions: Artifact Panel + Settings */}
         <div className="wb-bar-actions">
           <button
             type="button"
@@ -282,16 +271,6 @@ function WorkbenchBar() {
           >
             <Icon name="sliders" size={15} />
           </button>
-
-          <div
-            className="wb-bar-brand-wrap wb-bar-brand-right"
-            title="Amethyst Home"
-            onClick={() => setView('chat')}
-            style={{ cursor: 'pointer' }}
-          >
-            <BrandMark size={22} glow />
-            <span className="wb-bar-brand-text">AMETHYST</span>
-          </div>
         </div>
       </header>
     </>
@@ -315,20 +294,7 @@ function RailScrim({ onClose }) {
 }
 
 function Toasts() {
-  const { toasts } = useApp()
-  /* `aria-live` is the whole point of a toast for anyone not looking at the
-     corner of the screen: "connector ready, 16 tools" was visible feedback and
-     silent feedback at the same time. Polite, because none of these interrupt
-     anything. */
-  return (
-    <div className="toast-wrap" role="status" aria-live="polite">
-      {toasts.map((t) => (
-        <div key={t.id} className={`toast toast--${t.tone}`}>
-          <span>{t.message}</span>
-        </div>
-      ))}
-    </div>
-  )
+  return <Toaster />
 }
 
 /* The escape hatch, and why it is sticky.
@@ -683,7 +649,7 @@ export default function App() {
       <CommandPalette />
       <Shortcuts />
       
-      <OnboardingWizard />
+      <SplashScreenWizard />
       <ConfirmDialogHost />
       {approvalModal}
       <Toasts />

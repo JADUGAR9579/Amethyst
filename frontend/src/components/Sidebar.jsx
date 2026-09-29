@@ -8,16 +8,10 @@ import { prefetchView } from '../views/registry.js'
 import { api, fmtDate, serverTime } from '../api.js'
 import { useConfirm } from './ui/ConfirmDialog.jsx'
 import { useDismiss } from '../hooks/useDismiss.js'
-import {
-  SkiperNavItem,
-  ThemeToggleButton,
-  SmoothInput,
-  FadeScrollArea,
-} from './ui/skiper/index.js'
+import { SmoothInput } from './ui/skiper/index.js'
 import { AnimatePresence, motion } from 'framer-motion'
 import UserMenu from './UserMenu.jsx'
-
-
+import { safeStorage } from '../lib/storage.js'
 
 function bucketOf(iso) {
   if (!iso) return 'Earlier'
@@ -36,11 +30,6 @@ function bucketOf(iso) {
 
 function ConvItem({ conv, active, onOpen, onRename, onDelete, onTogglePin }) {
   const [menu, setMenu] = useState(false)
-  /* Which way the menu opens. Downwards unless the row is close enough to the
-     bottom of the rail that the menu would be cut off by it -- which is what
-     happened to every conversation near the end of the list, usually taking
-     Delete with it. Measured when it opens rather than guessed from the row's
-     index, because the rail scrolls. */
   const [up, setUp] = useState(false)
   const ref = useRef(null)
   const confirm = useConfirm()
@@ -50,21 +39,12 @@ function ConvItem({ conv, active, onOpen, onRename, onDelete, onTogglePin }) {
   const openMenu = useCallback(() => {
     const row = ref.current?.getBoundingClientRect()
     const rail = ref.current?.closest('.wb-sidebar')?.getBoundingClientRect()
-    // 132px is the menu at its tallest: three items and its padding.
     if (row && rail) setUp(rail.bottom - row.bottom < 132)
     setMenu((m) => !m)
   }, [])
 
   return (
     <div className={`sb-conv-item${active ? ' is-active' : ''}${menu ? ' menu-open' : ''}`} ref={ref}>
-      {active && (
-        <motion.span
-          layoutId="sb-active-conv"
-          className="sb-conv-active-bg"
-          initial={false}
-          transition={{ type: 'spring', stiffness: 500, damping: 38 }}
-        />
-      )}
       <button
         type="button"
         className={`sb-conv-btn${conv.pinned ? ' has-pinned-icon' : ''}`}
@@ -73,8 +53,8 @@ function ConvItem({ conv, active, onOpen, onRename, onDelete, onTogglePin }) {
         title={`${conv.title || 'untitled'} (${fmtDate(conv.updated_at || conv.created_at)})`}
       >
         {Boolean(conv.pinned) && (
-          <span className="sb-conv-icon sb-conv-icon--pinned">
-            <Icon name="star" size={13} filled={true} />
+          <span className="sb-conv-icon--pinned">
+            <Icon name="star" size={12} filled={true} />
           </span>
         )}
         <span className="sb-conv-title">{conv.title || 'untitled'}</span>
@@ -114,7 +94,7 @@ function ConvItem({ conv, active, onOpen, onRename, onDelete, onTogglePin }) {
                   onTogglePin(conv)
                 }}
               >
-                <Icon name="star" size={13} filled={Boolean(conv.pinned)} /> {conv.pinned ? 'Unpin' : 'Pin to Starred'}
+                <Icon name="star" size={12} filled={Boolean(conv.pinned)} /> {conv.pinned ? 'Unpin' : 'Pin to Starred'}
               </button>
             )}
             <button
@@ -125,7 +105,6 @@ function ConvItem({ conv, active, onOpen, onRename, onDelete, onTogglePin }) {
               }}
             >
               <Icon name="edit" size={12} /> Rename
-              <kbd className="kbd">F2</kbd>
             </button>
             <button
               type="button"
@@ -154,44 +133,44 @@ export default function Sidebar() {
   const {
     view, setView, setOverlay, health, healthError,
     compact, railOpen, toggleRail, closeRail,
+    sidebar, setSidebar,
     conversations, activeId, chat,
     renaming, setRenaming, renameConversation, deleteConversation,
     theme, setTheme, betaPages, refreshConvs, toast,
     userProfile, updateUserProfile,
+    workspace, setWorkspace,
   } = useApp()
 
-  // Beta pages appear here only once they are switched on in Settings, and
-  // Activity has moved there entirely.
+  const toggleSidebar = toggleRail
+
+  // Real navigation places
   const places = useMemo(() => forRail(betaPages), [betaPages])
 
   const [filter, setFilter] = useState('')
   const [showSearchInput, setShowSearchInput] = useState(false)
-  const [starredOpen, setStarredOpen] = useState(true)
-  const [recentsOpen, setRecentsOpen] = useState(true)
-  /* A section clips its contents only while its height is moving.
-  
-     It clipped them always, which is fine for the collapse animation and wrong
-     for everything else: the row menu is positioned just below its row, so on
-     any row near the bottom of a section the menu was cut off -- Delete was
-     usually the half that disappeared. */
-  const [collapsing, setCollapsing] = useState({ starred: false, recents: false })
 
-  const firstRef = useRef(null)
+  const isCollapsed = compact ? !railOpen : !sidebar
 
-  useEffect(() => {
-    if (compact && railOpen) firstRef.current?.focus()
-  }, [compact, railOpen])
+  const handleToggle = useCallback(() => {
+    toggleRail()
+  }, [toggleRail])
 
   const leave = useCallback((act) => () => {
     act?.()
     if (compact) closeRail()
   }, [compact, closeRail])
 
-  const status = healthError
-    ? 'API offline'
-    : health ? `${health.tools} tools · ${health.skills} skills` : 'connecting…'
+  // Pinning conversations
+  const togglePin = useCallback(async (conv) => {
+    try {
+      await api.pinConversation(conv.id, !conv.pinned)
+      await refreshConvs()
+    } catch (err) {
+      toast(err.message, 'bad')
+    }
+  }, [refreshConvs, toast])
 
-  // Starred vs Recents conversations
+  // Split into Starred and Recents
   const { starred, recents } = useMemo(() => {
     const q = filter.trim().toLowerCase()
     const matches = q
@@ -223,59 +202,348 @@ export default function Sidebar() {
       .filter((b) => b.items.length > 0)
   }, [recents, filter])
 
-  /* Pin the conversation this row is for.
-     
-     It used to accept `conv`, ignore it, and call the chat view's own pin --
-     which pins the last *message* of whatever conversation happened to be open.
-     So starring a row in the sidebar wrote a bit on a different object
-     entirely, and Starred, which filters on `c.pinned`, stayed empty forever. */
-  const togglePin = useCallback(async (conv) => {
-    try {
-      await api.pinConversation(conv.id, !conv.pinned)
-      await refreshConvs()
-    } catch (err) {
-      toast(err.message, 'bad')
+  // Display user information
+  const displayName = userProfile?.full_name || userProfile?.name || 'Wayne'
+  const userInitials = useMemo(() => {
+    const raw = (userProfile?.name || displayName || 'Wayne').trim()
+    const parts = raw.split(/\s+/)
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase()
     }
-  }, [refreshConvs, toast])
+    if (raw.length >= 2) {
+      return raw.slice(0, 2).toUpperCase()
+    }
+    return 'WA'
+  }, [userProfile, displayName])
+
+  // Active workspace name for subtitle
+  const workspaceName = useMemo(() => {
+    if (!workspace) return 'Default Workspace'
+    const parts = workspace.split('/').filter(Boolean)
+    return parts[parts.length - 1] || 'Default Workspace'
+  }, [workspace])
+
+  // Separate primary navigation places and grouped utility places (Tasks, Email, File Converter)
+  const { topPlaces, utilityPlaces, bottomPlaces } = useMemo(() => {
+    const utils = places.filter((p) => p.group === 'utilities')
+    const others = places.filter((p) => p.id !== 'chat' && p.group !== 'utilities')
+    const top = others.filter((p) => p.id === 'today')
+    const bottom = others.filter((p) => p.id !== 'today')
+    return { topPlaces: top, utilityPlaces: utils, bottomPlaces: bottom }
+  }, [places])
+
+  const isUtilityActive = useMemo(() => {
+    return utilityPlaces.some((p) => p.id === view)
+  }, [utilityPlaces, view])
+
+  const [utilitiesOpen, setUtilitiesOpen] = useState(() => {
+    return isUtilityActive || safeStorage.getItem('sb_utilities_open') !== 'false'
+  })
+
+  useEffect(() => {
+    if (isUtilityActive) {
+      setUtilitiesOpen(true)
+    }
+  }, [isUtilityActive])
+
+  const toggleUtilities = useCallback(() => {
+    setUtilitiesOpen((open) => {
+      const next = !open
+      safeStorage.setItem('sb_utilities_open', String(next))
+      return next
+    })
+  }, [])
+
+  const [miniUtilsOpen, setMiniUtilsOpen] = useState(false)
+  const miniUtilsRef = useRef(null)
+  useDismiss(miniUtilsRef, miniUtilsOpen, { onAway: () => setMiniUtilsOpen(false) })
+
+  const status = healthError
+    ? 'API offline'
+    : health ? `${health.tools} tools · ${health.skills} skills` : 'connecting…'
+
+  const showExpandedView = !isCollapsed
 
   return (
     <aside
       id="rail"
-      className={`wb-sidebar${compact && !railOpen ? ' is-hidden' : ''}`}
+      className={`wb-sidebar${compact && !railOpen ? ' is-hidden' : ''}${isCollapsed ? ' is-collapsed' : ' is-expanded'}`}
       aria-label="Main Navigation"
       aria-hidden={compact && !railOpen ? 'true' : undefined}
     >
-      {/* 1. Header (Screenshot 1): User Card + Sidebar Close Toggle */}
-      <div className="sb-header">
-        <div className="sb-header-top-row">
-          <button
-            type="button"
-            className="sb-icon-btn"
-            onClick={toggleRail}
-            title={`Close sidebar — ${MOD_LABEL}+B`}
-            aria-label="Close sidebar"
-          >
-            <Icon name="sidebar" size={16} />
-          </button>
-
-          <UserMenu align="start" side="bottom" sideOffset={8}>
+      {!showExpandedView ? (
+        /* ===================================================================
+           1. COLLAPSED MINI RAIL (54px) — Icon Rail
+           =================================================================== */
+        <div
+          className="sb-mini-rail"
+          onClick={(e) => {
+            // Expand sidebar if clicking anywhere on the mini-rail outside of interactive buttons
+            if (!e.target.closest('button, a, input, [role="button"]')) {
+              handleToggle()
+            }
+          }}
+          title="Click to expand sidebar"
+        >
+          {/* Top Actions: App Icon (reveals Sidebar Expand on hover) + New Chat + Search */}
+          <div className="sb-mini-top">
             <button
               type="button"
-              className="sb-user-card-top"
-              title={`User menu for ${userProfile?.name || 'User'} — Click to edit name or open settings`}
+              className="sb-mini-brand-toggle-btn"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleToggle()
+              }}
+              title={`Expand sidebar — ${MOD_LABEL}+B`}
+              aria-label="Expand sidebar"
             >
-              <BrandMark size={22} glow />
-              <span className="sb-user-name-top">{userProfile?.name ? `${userProfile.name}'s Amethyst` : 'Amethyst OS'}</span>
-              <Icon name="chevron" size={10} className="sb-user-chevron" />
+              <span className="sb-mini-brand-icon">
+                <BrandMark size={26} glow />
+              </span>
+              <span className="sb-mini-toggle-icon">
+                <Icon name="sidebar" size={19} />
+              </span>
             </button>
-          </UserMenu>
-        </div>
 
-        {/* Row 2: New chat button + Search button (Matching Screenshot 1 & Apple design) */}
-        <div className="sb-header-actions-row">
+            <button
+              type="button"
+              className="sb-mini-plus-btn"
+              onClick={(e) => {
+                e.stopPropagation()
+                leave(() => {
+                  setView('chat')
+                  chat.startFresh?.()
+                })()
+              }}
+              title={`New chat — ${MOD_LABEL}+Shift+O`}
+              aria-label="New chat"
+            >
+              <Icon name="plus" size={18} weight="bold" />
+            </button>
+
+            <button
+              type="button"
+              className="sb-mini-btn"
+              onClick={(e) => {
+                e.stopPropagation()
+                setSidebar(true)
+                setShowSearchInput(true)
+              }}
+              title={`Search conversations — ${MOD_LABEL}+K`}
+              aria-label="Search conversations"
+            >
+              <Icon name="search" size={20} />
+            </button>
+          </div>
+
+          {/* Middle Nav Items: Real Places */}
+          <div className="sb-mini-nav" aria-label="Main Navigation">
+            {topPlaces.map((place) => {
+              const isActive = view === place.id
+              return (
+                <button
+                  key={place.id}
+                  type="button"
+                  className={`sb-mini-btn${isActive ? ' is-active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    leave(() => setView(place.id))()
+                  }}
+                  onPointerEnter={() => prefetchView(place.id)}
+                  title={`${place.label} — ${MOD_LABEL}+${place.digit || ''}`}
+                  aria-label={place.label}
+                >
+                  <Icon name={place.icon} size={20} />
+                </button>
+              )
+            })}
+
+            {/* Collapsed Utilities Icon with Flyout */}
+            <div ref={miniUtilsRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className={`sb-mini-btn${isUtilityActive ? ' is-active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setMiniUtilsOpen((o) => !o)
+                }}
+                title="Utilities (Tasks, Email, File Converter)"
+                aria-label="Utilities"
+                aria-expanded={miniUtilsOpen}
+              >
+                <Icon name="wrench" size={20} />
+              </button>
+
+              <AnimatePresence>
+                {miniUtilsOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.94, x: 6 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.94, x: 6 }}
+                    transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
+                    className="sb-mini-flyout"
+                  >
+                    <div className="sb-mini-flyout-title">Utilities</div>
+                    {utilityPlaces.map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        className={`sb-mini-flyout-item${view === u.id ? ' is-active' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setMiniUtilsOpen(false)
+                          leave(() => setView(u.id))()
+                        }}
+                      >
+                        <span className="sb-mini-flyout-icon"><Icon name={u.icon} size={16} /></span>
+                        <span className="sb-mini-flyout-label">{u.label}</span>
+                        {u.digit && <span className="sb-mini-flyout-shortcut">{MOD_LABEL}+{u.digit}</span>}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {bottomPlaces.map((place) => {
+              const isActive = view === place.id
+              return (
+                <button
+                  key={place.id}
+                  type="button"
+                  className={`sb-mini-btn${isActive ? ' is-active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    leave(() => setView(place.id))()
+                  }}
+                  onPointerEnter={() => prefetchView(place.id)}
+                  title={`${place.label} — ${MOD_LABEL}+${place.digit || ''}`}
+                  aria-label={place.label}
+                >
+                  <Icon name={place.icon} size={20} />
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Spacious middle rail area — hover shows expand hint, click anywhere opens sidebar */}
+          <div
+            className="sb-mini-body"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleToggle()
+            }}
+            title={`Open sidebar — ${MOD_LABEL}+B`}
+            aria-label="Open sidebar"
+          >
+            <div className="sb-mini-grab-line" aria-hidden="true" />
+          </div>
+
+          {/* Bottom Actions: User Profile Initials Square */}
+          <div className="sb-mini-bottom">
+            <span className="wb-foot-sub" style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}>{status}</span>
+
+            <UserMenu align="start" side="right" sideOffset={12}>
+              <button
+                type="button"
+                className="sb-mini-avatar-square"
+                title={`User menu for ${displayName}`}
+                aria-label={`User menu for ${displayName}`}
+              >
+                {userInitials}
+              </button>
+            </UserMenu>
+          </div>
+        </div>
+      ) : (
+        /* ===================================================================
+           2. EXPANDED MODERN SIDEBAR (260px) — Vibecoded
+           =================================================================== */
+        <div className="sb-expanded-container">
+          {/* Top Header: Authentic Amethyst Logo + Workspace Selector + Search + Collapse */}
+          <div className="sb-header">
+            <div className="sb-header-top-row">
+              <UserMenu align="start" side="bottom" sideOffset={8}>
+                <button
+                  type="button"
+                  className="sb-workspace-selector wb-brand"
+                  title="Workspace settings & user menu"
+                >
+                  <BrandMark size={24} glow />
+                  <span className="sb-workspace-name">Amethyst</span>
+                  <Icon name="chevron-down" size={11} className="sb-workspace-chevron" />
+                </button>
+              </UserMenu>
+
+              <div className="sb-header-actions">
+                <button
+                  type="button"
+                  className={`sb-header-icon-btn${showSearchInput ? ' is-active' : ''}`}
+                  onClick={() => setShowSearchInput((s) => !s)}
+                  title={`Search conversations — ${MOD_LABEL}+K`}
+                  aria-label="Search conversations"
+                >
+                  <Icon name="search" size={18} />
+                </button>
+
+                <button
+                  type="button"
+                  className="sb-header-icon-btn"
+                  onClick={handleToggle}
+                  title={`Collapse sidebar — ${MOD_LABEL}+B`}
+                  aria-label="Collapse sidebar"
+                >
+                  <Icon name="sidebar" size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Inline Conversation Filter */}
+            <AnimatePresence>
+              {showSearchInput && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                  className="sb-search-wrapper"
+                >
+                  <div className="sb-search-bar">
+                    <Icon name="search" size={15} className="sb-search-icon" />
+                    <SmoothInput
+                      autoFocus
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      placeholder="Search chats..."
+                      className="sb-search-input"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          e.stopPropagation()
+                          setFilter('')
+                          setShowSearchInput(false)
+                        }
+                      }}
+                    />
+                    {filter && (
+                      <button
+                        type="button"
+                        className="sb-clear-btn"
+                        onClick={() => setFilter('')}
+                        aria-label="Clear search"
+                      >
+                        <Icon name="x" size={12} />
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Prominent + New Chat Pill Button */}
           <button
             type="button"
-            className="sb-new-chat-btn"
+            className={`sb-new-chat-pill${view === 'chat' && !activeId ? ' is-active' : ''}`}
             onClick={leave(() => {
               setView('chat')
               chat.startFresh?.()
@@ -283,141 +551,192 @@ export default function Sidebar() {
             title={`New chat — ${MOD_LABEL}+Shift+O`}
             aria-label="New chat"
           >
-            <Icon name="edit" size={15} />
-            <span>New chat</span>
-          </button>
-
-          <button
-            type="button"
-            className={`sb-search-btn-square${showSearchInput ? ' is-active' : ''}`}
-            onClick={() => setShowSearchInput((s) => !s)}
-            title="Search conversations"
-            aria-label="Search conversations"
-          >
-            <Icon name="search" size={15} />
-          </button>
-        </div>
-      </div>
-
-      {/* Optional Search Field with Skiper106 Smooth Caret Input */}
-      <AnimatePresence>
-        {showSearchInput && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="sb-search-wrapper"
-          >
-            <div className="sb-search-bar">
-              <Icon name="search" size={13} className="sb-search-icon" />
-              <SmoothInput
-                autoFocus
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                placeholder="Search..."
-                className="sb-search-input"
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    e.stopPropagation()
-                    setFilter('')
-                    setShowSearchInput(false)
-                  }
-                }}
-              />
-              {filter && (
-                <button
-                  type="button"
-                  className="sb-clear-btn"
-                  onClick={() => setFilter('')}
-                  aria-label="Clear search"
-                >
-                  <Icon name="x" size={12} />
-                </button>
-              )}
+            <div className="sb-new-chat-left">
+              <Icon name="plus" size={16} weight="bold" />
+              <span>New Chat</span>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <span className="sb-new-chat-shortcut">
+              {MOD_LABEL}+Shift+O
+            </span>
+          </button>
 
-      {/* Scrollable Body: Places + Starred + Recents */}
-      <FadeScrollArea className="sb-scroll-body" fadeHeight={20}>
-        {/* 2. Primary Navigation Places (Screenshot 1 items with Skiper40 hover animations) */}
-        <nav className="sb-places-nav" aria-label="Sections">
-          {places.map((place) => {
-            const isActive = view === place.id
-            return (
-              <SkiperNavItem
-                key={place.id}
-                active={isActive}
-                onClick={leave(() => setView(place.id))}
-                onPointerEnter={() => prefetchView(place.id)}
-                onFocus={() => prefetchView(place.id)}
-                className="sb-place-item"
-                title={`${place.label} — ${MOD_LABEL}+${place.digit || ''}`}
+          {/* Primary Navigation Section: Real Amethyst Views */}
+          <div className="sb-nav-section" aria-label="Main Navigation">
+            {/* Top item: Today */}
+            {topPlaces.map((place) => {
+              const isActive = view === place.id
+              return (
+                <button
+                  key={place.id}
+                  type="button"
+                  className={`sb-nav-item${isActive ? ' is-active' : ''}`}
+                  onClick={leave(() => setView(place.id))}
+                  onPointerEnter={() => prefetchView(place.id)}
+                  title={`${place.label} — ${MOD_LABEL}+${place.digit || ''}`}
+                >
+                  <div className="sb-nav-item-left">
+                    <span className="sb-nav-item-icon">
+                      <Icon name={place.icon} size={18} />
+                    </span>
+                    <span className="sb-nav-item-label">{place.label}</span>
+                  </div>
+                  {place.digit && (
+                    <span className="sb-nav-item-shortcut">
+                      {MOD_LABEL}+{place.digit}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+
+            {/* Expandable Utilities Group (Tasks, Email, File Converter) */}
+            <div className="sb-nav-group">
+              <button
+                type="button"
+                className={`sb-nav-item sb-nav-group-trigger${isUtilityActive ? ' has-active-child' : ''}`}
+                onClick={toggleUtilities}
+                aria-expanded={utilitiesOpen}
+                title="Utilities (Tasks, Email, File Converter)"
               >
-                <span className="sb-place-icon">
-                  <Icon name={place.icon} size={18} filled={isActive} />
-                </span>
-                <span className="sb-place-label">{place.label}</span>
-                {place.beta && <span className="sb-beta-pill">BETA</span>}
-                {/* Two elements, not one string. `{MOD_LABEL}{digit}` renders
-                    "Ctrl8" on anything that is not a Mac, and in a mono face
-                    at 11px the lowercase L and the 1 are the same glyph -- the
-                    hint for Ctrl+8 read as "Ctr18". The separator is the fix;
-                    on a Mac it is still just "⌘8" with a hair of air. */}
-                {place.digit && (
-                  <span className="sb-shortcut-badge">
-                    <kbd>{MOD_LABEL}</kbd><kbd>{place.digit}</kbd>
+                <div className="sb-nav-item-left">
+                  <span className="sb-nav-item-icon">
+                    <Icon name="wrench" size={18} />
                   </span>
-                )}
-              </SkiperNavItem>
-            )
-          })}
-        </nav>
+                  <span className="sb-nav-item-label">Utilities</span>
+                </div>
+                <div className="sb-nav-group-right">
+                  {isUtilityActive && <span className="sb-nav-group-active-dot" />}
+                  <span className={`sb-nav-group-chevron${utilitiesOpen ? ' is-open' : ''}`}>
+                    <Icon name="chevron-down" size={13} />
+                  </span>
+                </div>
+              </button>
 
-        {/* 3. Collapsible Section: STARRED (Screenshot 1) */}
-        <div className="sb-section">
-          <div className="sb-section-head">
-            <button
-              type="button"
-              className="sb-section-toggle"
-              onClick={() => setStarredOpen((o) => !o)}
-              aria-expanded={starredOpen}
-            >
-              <span className={`sb-caret-wrap${starredOpen ? ' is-open' : ''}`}>
-                <Icon name="chevron-right" size={11} className="sb-caret-icon" />
-              </span>
-              <span className="sb-section-title">Starred</span>
-            </button>
-            <button
-              type="button"
-              className="sb-section-more"
-              title="Starred options"
-              aria-label="Starred options"
-            >
-              <Icon name="dots" size={14} />
-            </button>
+              <AnimatePresence initial={false}>
+                {utilitiesOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                    className="sb-nav-subitems-wrap"
+                  >
+                    <div className="sb-nav-subitems">
+                      {utilityPlaces.map((place) => {
+                        const isActive = view === place.id
+                        return (
+                          <button
+                            key={place.id}
+                            type="button"
+                            className={`sb-nav-item sb-nav-subitem${isActive ? ' is-active' : ''}`}
+                            onClick={leave(() => setView(place.id))}
+                            onPointerEnter={() => prefetchView(place.id)}
+                            title={`${place.label} — ${MOD_LABEL}+${place.digit || ''}`}
+                          >
+                            <div className="sb-nav-item-left">
+                              <span className="sb-nav-item-icon">
+                                <Icon name={place.icon} size={16} />
+                              </span>
+                              <span className="sb-nav-item-label">{place.label}</span>
+                            </div>
+                            {place.digit ? (
+                              <span className="sb-nav-item-shortcut">
+                                {MOD_LABEL}+{place.digit}
+                              </span>
+                            ) : place.beta ? (
+                              <span className="sb-nav-item-beta">Beta</span>
+                            ) : null}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Bottom items: Capabilities, Automations, Memory, Library */}
+            {bottomPlaces.map((place) => {
+              const isActive = view === place.id
+              return (
+                <button
+                  key={place.id}
+                  type="button"
+                  className={`sb-nav-item${isActive ? ' is-active' : ''}`}
+                  onClick={leave(() => setView(place.id))}
+                  onPointerEnter={() => prefetchView(place.id)}
+                  title={`${place.label} — ${MOD_LABEL}+${place.digit || ''}`}
+                >
+                  <div className="sb-nav-item-left">
+                    <span className="sb-nav-item-icon">
+                      <Icon name={place.icon} size={18} />
+                    </span>
+                    <span className="sb-nav-item-label">{place.label}</span>
+                  </div>
+                  {place.digit && (
+                    <span className="sb-nav-item-shortcut">
+                      {MOD_LABEL}+{place.digit}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
           </div>
 
-          <AnimatePresence initial={false}>
-            {starredOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                className={`sb-section-body${collapsing.starred ? ' is-collapsing' : ''}`}
-                onAnimationStart={() => setCollapsing((c) => ({ ...c, starred: true }))}
-                onAnimationComplete={() => setCollapsing((c) => ({ ...c, starred: false }))}
-              >
-                {starred.length === 0 ? (
-                  <div className="sb-empty-starred">
-                    <Icon name="star" size={12} className="sb-empty-starred-icon" />
-                    <span>Starred chats will appear here</span>
-                  </div>
-                ) : (
-                  starred.map((c) => (
+          {/* Scroll Area: Starred & Time-Grouped Recent Chats */}
+          <div className="sb-scroll-body wb-list">
+            {/* Starred Conversations */}
+            {starred.length > 0 && (
+              <div className="sb-starred-group">
+                <div className="sb-section-label">Starred</div>
+                {starred.map((c) => (
+                  renaming === c.id ? (
+                    <div key={c.id} className="sb-rename-wrap">
+                      <SmoothInput
+                        autoFocus
+                        defaultValue={c.title || ''}
+                        className="sb-rename-input"
+                        onBlur={(e) => renameConversation(c.id, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            renameConversation(c.id, e.target.value)
+                          }
+                          if (e.key === 'Escape') {
+                            e.stopPropagation()
+                            setRenaming(null)
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <ConvItem
+                      key={c.id}
+                      conv={c}
+                      active={c.id === activeId && view === 'chat'}
+                      onOpen={leave(() => {
+                        setView('chat')
+                        chat.selectConversation?.(c.id)
+                      })}
+                      onRename={() => setRenaming(c.id)}
+                      onDelete={() => deleteConversation(c.id)}
+                      onTogglePin={togglePin}
+                    />
+                  )
+                ))}
+              </div>
+            )}
+
+            {/* Time-Grouped Recents (Today, Yesterday, Previous 7 Days, etc.) */}
+            {recentBuckets.length === 0 ? (
+              <div className="sb-empty-chats">
+                {filter ? 'No matching chats' : 'No chats yet'}
+              </div>
+            ) : (
+              recentBuckets.map((bucket) => (
+                <div key={bucket.label || 'all'} className="sb-bucket-group">
+                  {bucket.label && <div className="sb-section-label">{bucket.label}</div>}
+                  {bucket.items.map((c) => (
                     renaming === c.id ? (
                       <div key={c.id} className="sb-rename-wrap">
                         <SmoothInput
@@ -451,99 +770,34 @@ export default function Sidebar() {
                         onTogglePin={togglePin}
                       />
                     )
-                  ))
-                )}
-              </motion.div>
+                  ))}
+                </div>
+              ))
             )}
-          </AnimatePresence>
-        </div>
-
-        {/* 4. Collapsible Section: RECENTS (Screenshot 1) */}
-        <div className="sb-section">
-          <div className="sb-section-head">
-            <button
-              type="button"
-              className="sb-section-toggle"
-              onClick={() => setRecentsOpen((o) => !o)}
-              aria-expanded={recentsOpen}
-            >
-              <span className={`sb-caret-wrap${recentsOpen ? ' is-open' : ''}`}>
-                <Icon name="chevron-right" size={11} className="sb-caret-icon" />
-              </span>
-              <span className="sb-section-title">Recents</span>
-            </button>
-            <button
-              type="button"
-              className="sb-section-more"
-              title="Recents options"
-              aria-label="Recents options"
-            >
-              <Icon name="dots" size={14} />
-            </button>
           </div>
 
-          <AnimatePresence initial={false}>
-            {recentsOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                className={`sb-section-body${collapsing.recents ? ' is-collapsing' : ''}`}
-                onAnimationStart={() => setCollapsing((c) => ({ ...c, recents: true }))}
-                onAnimationComplete={() => setCollapsing((c) => ({ ...c, recents: false }))}
+          {/* Bottom Actions: Functional User & Workspace Card */}
+          <div className="sb-bottom-container">
+            <span className="wb-foot-sub" style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}>{status}</span>
+
+            <UserMenu align="start" side="top" sideOffset={10}>
+              <button
+                type="button"
+                className="sb-user-card-bottom"
+                title={`Account settings for ${displayName}`}
               >
-                {recents.length === 0 ? (
-                  <div className="sb-empty-recents">
-                    <span>{filter ? 'No matching chats' : 'No recent chats'}</span>
-                  </div>
-                ) : (
-                  recentBuckets.map((bucket) => (
-                    <div key={bucket.label || 'all'} className="sb-bucket-group">
-                      {bucket.label && <div className="sb-bucket-header">{bucket.label}</div>}
-                      {bucket.items.map((c) => (
-                        renaming === c.id ? (
-                          <div key={c.id} className="sb-rename-wrap">
-                            <SmoothInput
-                              autoFocus
-                              defaultValue={c.title || ''}
-                              className="sb-rename-input"
-                              onBlur={(e) => renameConversation(c.id, e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault()
-                                  renameConversation(c.id, e.target.value)
-                                }
-                                if (e.key === 'Escape') {
-                                  e.stopPropagation()
-                                  setRenaming(null)
-                                }
-                              }}
-                            />
-                          </div>
-                        ) : (
-                          <ConvItem
-                            key={c.id}
-                            conv={c}
-                            active={c.id === activeId && view === 'chat'}
-                            onOpen={leave(() => {
-                              setView('chat')
-                              chat.selectConversation?.(c.id)
-                            })}
-                            onRename={() => setRenaming(c.id)}
-                            onDelete={() => deleteConversation(c.id)}
-                            onTogglePin={togglePin}
-                          />
-                        )
-                      ))}
-                    </div>
-                  ))
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <div className="sb-user-avatar-square">
+                  {userInitials}
+                </div>
+                <div className="sb-user-info-bottom">
+                  <span className="sb-user-name-bottom">{displayName}</span>
+                  <span className="sb-user-subtext-bottom">{workspaceName}</span>
+                </div>
+              </button>
+            </UserMenu>
+          </div>
         </div>
-      </FadeScrollArea>
+      )}
     </aside>
   )
 }

@@ -444,8 +444,11 @@ async function share(request: Request, env: Env): Promise<Response> {
 	const stored = await getState(env, 'share_token');
 	const presented = bearer(request.headers.get('authorization'));
 	if (!stored) return json({ error: 'no such endpoint: /share' }, 404);
-	if (!presented || !sameSecret(presented, stored)) {
-		return json({ error: 'that token is not the one this relay holds' }, 401);
+	if (!presented) {
+		return json({ error: 'an Authorization: Bearer <token> header is required' }, 401);
+	}
+	if (!sameSecret(presented, stored)) {
+		return json({ error: 'that token is not the one this relay holds — rotate with: amethyst share token' }, 401);
 	}
 
 	const raw = await request.arrayBuffer();
@@ -670,19 +673,19 @@ async function sync(request: Request, env: Env): Promise<Response> {
 	} catch { /* stale list is fine */ }
 
 	let outboundSummaryResult: Record<string, number> = {};
-	try { outboundSummaryResult = await outboundSummary(env); } catch { /* ok */ }
+	try { outboundSummaryResult = await outboundSummary(env); } catch (err) { console.error('outboundSummary error:', err); }
 
 	let jobsResult: Record<string, unknown> = { ready: [], pending: [], counts: {} };
-	try { jobsResult = await jobsForSync(env, Math.min(limit, SYNC_BATCH)); } catch { /* ok */ }
+	try { jobsResult = await jobsForSync(env, Math.min(limit, SYNC_BATCH)); } catch (err) { console.error('jobsForSync error:', err); }
 
 	let workersResult: unknown[] = [];
-	try { workersResult = (await reportsForSync(env, Math.min(limit, SYNC_BATCH))) ?? []; } catch { /* ok */ }
+	try { workersResult = (await reportsForSync(env, Math.min(limit, SYNC_BATCH))) ?? []; } catch (err) { console.error('reportsForSync error:', err); }
 
 	let opsResult: unknown[] = [];
-	try { opsResult = await opsForSync(env, self); } catch { /* ok */ }
+	try { opsResult = await opsForSync(env, self); } catch (err) { console.error('opsForSync error:', err); }
 
 	let pairingsResult: unknown[] = [];
-	try { pairingsResult = await pairingsForSync(env); } catch { /* ok */ }
+	try { pairingsResult = await pairingsForSync(env); } catch (err) { console.error('pairingsForSync error:', err); }
 
 	return json({
 		deliveries,
@@ -934,6 +937,11 @@ export default {
 			return sync(request, env);
 		}
 
+		// A link from a phone. Its own credential (share_token), not Instagram's:
+		// the same reasoning that puts /sync above the Instagram gate. A relay
+		// without Meta configured is still a relay a phone can share links to.
+		if (path === '/share' && request.method === 'POST') return share(request, env);
+
 		// Everything below is Instagram capture, which needs all three. A Worker
 		// deployed but not yet given its secrets is not half-working, it is not
 		// working -- and it answers 404 rather than 500, the same way
@@ -950,7 +958,6 @@ export default {
 			if (request.method === 'POST') return delivery(request, env, ctx);
 			return json({ error: 'method not allowed' }, 405);
 		}
-		if (path === '/share' && request.method === 'POST') return share(request, env);
 
 
 		// The worker mailbox. Its own credential, and one verb: a runner may say

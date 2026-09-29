@@ -9,17 +9,7 @@ import Skeleton, { SkeletonRows } from '../../components/Skeleton.jsx'
 import { useConfirm } from '../../components/ui/ConfirmDialog.jsx'
 import NewConnectorModal from './NewConnectorModal.jsx'
 
-/* Connectors: Agent Core Tools and User Connectors.
-   Apple-grade Modern Design with:
-   - macOS Dock quick strip with spring magnification & floating tooltips
-   - Double-Bezel nested card architecture with GPU compositor shadows
-   - Text reveal typography animations with blur resolve
-   - Sliding segmented pill filter with layoutId spring physics
-   - Smooth card layout transitions on filtering (FLIP)
-   - Dynamic button-in-button state morphing (Start -> Starting… -> Connected)
-   - Pulsing emerald live radar ping indicators
-   - Smooth sliding detail view with Esc key and back navigation
-*/
+/* Connectors: Agent Core Tools and User Connectors. */
 
 const AGENT_TOOL_IDS = new Set([
   'playwright',
@@ -38,34 +28,6 @@ function isAgentTool(item) {
   if (AGENT_TOOL_IDS.has(id)) return true
   if (item.category && AGENT_TOOL_CATEGORIES.has(item.category)) return true
   return false
-}
-
-const FILTER_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'agent-tools', label: 'Agent Tools' },
-  { id: 'connectors', label: 'User Connectors' },
-  { id: 'Productivity', label: 'Productivity' },
-  { id: 'Development', label: 'Development' },
-  { id: 'Communication', label: 'Communication' },
-]
-
-/* Text reveal with Apple-grade mask slide and blur settle */
-function TextReveal({ children, delay = 0, className = '', as = 'div' }) {
-  const Component = motion[as] || motion.div
-  return (
-    <Component
-      className={`text-reveal-wrap ${className}`}
-      initial={{ opacity: 0, y: 10, filter: 'blur(3px)' }}
-      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      transition={{
-        duration: 0.4,
-        delay,
-        ease: [0.16, 1, 0.3, 1],
-      }}
-    >
-      {children}
-    </Component>
-  )
 }
 
 /* Where sign-in is arranged, and the only place "Reconnect" lives. */
@@ -522,7 +484,7 @@ function ConnectorDetail({ server, cap, live, busy, tools, onBack, onAct, onChan
           onClick={onBack}
         >
           <Icon name="chevron" size={14} className="conn-back-mark" />
-          <span>Plugins</span>
+          <span>Connectors</span>
         </button>
       </div>
 
@@ -532,7 +494,7 @@ function ConnectorDetail({ server, cap, live, busy, tools, onBack, onAct, onChan
             <ServiceIcon name={server.name} size={48} />
           </div>
           <div>
-            <TextReveal as="h2">{server.title}</TextReveal>
+            <h2>{server.title}</h2>
             <div style={{ marginTop: 6 }}>
               {isReady && <span className="conn-status conn-status--live"><span className="status-dot live" />Active · {liveData.tools || tools.length} tools</span>}
               {!isReady && isAccountMismatch && <span className="conn-status conn-status--warning"><span className="status-dot warning" />Wrong account ({server.account || liveData.account})</span>}
@@ -601,44 +563,40 @@ function ConnectorDetail({ server, cap, live, busy, tools, onBack, onAct, onChan
                     onAct('remove'); 
                   }}
                 >
-                  <Icon name="trash" size={16} /> Remove plugin
+                  <Icon name="trash" size={16} /> Remove connector
                 </button>
               </div>
             )}
           </div>
           {server.isConfigured === false ? (
             <button 
-              className="btn btn--pill btn--primary"
+              className="btn btn--small btn--primary"
               onClick={() => (onAdd ? onAdd() : onAct('add'))}
               disabled={Boolean(busy)}
-              style={{ padding: '8px 16px', background: '#fff', color: '#000', fontSize: '14px', borderRadius: '99px' }}
             >
-              Install plugin
+              Install connector
             </button>
           ) : needsAuth ? (
             <button 
-              className="btn btn--pill btn--primary"
+              className="btn btn--small btn--primary"
               onClick={() => onAct('login')}
               disabled={Boolean(busy)}
-              style={{ padding: '8px 16px', background: '#fff', color: '#000', fontSize: '14px', borderRadius: '99px' }}
             >
               {busy === 'login' ? 'Opening…' : 'Sign in'}
             </button>
           ) : !isConnected ? (
             <button 
-              className="btn btn--pill btn--primary"
+              className="btn btn--small btn--primary"
               onClick={() => onAct('connect')}
               disabled={Boolean(busy)}
-              style={{ padding: '8px 16px', background: '#fff', color: '#000', fontSize: '14px', borderRadius: '99px' }}
             >
               {busy === 'connect' ? 'Connecting…' : 'Connect'}
             </button>
           ) : (
             <button 
-              className="btn btn--pill btn--primary"
+              className="btn btn--small btn--primary"
               onClick={() => handleTryInChat()}
               disabled={Boolean(busy)}
-              style={{ padding: '8px 16px', background: '#fff', color: '#000', fontSize: '14px', borderRadius: '99px' }}
             >
               Try in chat
             </button>
@@ -749,18 +707,18 @@ function PluginRowSkeleton({ titleWidth = 140, descWidth = '84%' }) {
   return (
     <div className="plugin-row" style={{ pointerEvents: 'none' }}>
       <div className="plugin-row-icon">
-        <Skeleton w={40} h={40} r={10} />
+        <Skeleton w={46} h={46} r={12} />
       </div>
       <div className="plugin-row-info">
         <div className="plugin-row-title-wrap">
-          <Skeleton w={titleWidth} h={15} r={4} />
+          <Skeleton w={titleWidth} h={16} r={6} />
         </div>
-        <div className="plugin-row-desc">
+        <div className="plugin-row-desc" style={{ marginTop: 6 }}>
           <Skeleton w={descWidth} h={13} r={4} />
         </div>
       </div>
       <div className="plugin-row-actions">
-        <Skeleton w={32} h={32} r={16} style={{ opacity: 0.35 }} />
+        <Skeleton w={32} h={32} r={8} style={{ opacity: 0.35 }} />
       </div>
     </div>
   )
@@ -892,7 +850,7 @@ function PluginRow({ item, isConfigured, live, busy, onOpen, onToggle, onAdd, on
       }}
     >
       <div className="plugin-row-icon">
-        <ServiceIcon name={item.name || item.id} size={40} />
+        <ServiceIcon name={item.name || item.id} size={28} />
       </div>
 
       <div className="plugin-row-info">
@@ -913,12 +871,17 @@ function PluginRow({ item, isConfigured, live, busy, onOpen, onToggle, onAdd, on
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button
               type="button"
-              className="plugin-add-icon-btn"
+              className="plugin-pill-btn plugin-pill-btn--primary"
               disabled={Boolean(busy)}
               onClick={(e) => { e.stopPropagation(); onAdd(); }}
               title={busy === 'add' ? 'Adding…' : 'Install'}
             >
-              {busy === 'add' ? <span className="auth-spinner" /> : <Icon name="plus" size={18} />}
+              {busy === 'add' ? <span className="auth-spinner" /> : (
+                <>
+                  <Icon name="plus" size={13} />
+                  <span>Install</span>
+                </>
+              )}
             </button>
             <div style={{ position: 'relative' }} ref={popoverRef}>
               <button
@@ -927,7 +890,7 @@ function PluginRow({ item, isConfigured, live, busy, onOpen, onToggle, onAdd, on
                 onClick={(e) => { e.stopPropagation(); setPopoverOpen(!popoverOpen); }}
                 title="Options"
               >
-                <Icon name="dots" size={18} />
+                <Icon name="dots" size={16} />
               </button>
               {popoverOpen && (
                 <div className="plugin-popover">
@@ -1074,53 +1037,7 @@ function PluginRow({ item, isConfigured, live, busy, onOpen, onToggle, onAdd, on
   )
 }
 
-/* Apple macOS Dock Chip with hover magnification and floating tooltip */
-function InstalledDockChip({ item, index, onOpen }) {
-  const [hovered, setHovered] = useState(false)
 
-  return (
-    <div style={{ position: 'relative' }}>
-      <motion.button
-        type="button"
-        className="conn-installed-chip"
-        onClick={onOpen}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        whileHover={{ scale: 1.14, y: -2 }}
-        whileTap={{ scale: 0.94 }}
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{
-          type: 'spring',
-          stiffness: 440,
-          damping: 24,
-          delay: Math.min(index * 0.02, 0.25),
-        }}
-        aria-label={`${item.title} (${item.ready ? 'Connected' : (item.missing_credentials || []).length ? 'Needs credentials' : (item.signed_in === false && item.auth_kind !== 'none') ? 'Needs sign-in' : 'Not running'})`}
-      >
-        <ServiceIcon name={item.name} size={38} />
-        <span className={`status-dot ${item.ready ? 'live' : 'off'}`} />
-      </motion.button>
-
-      <AnimatePresence>
-        {hovered && (
-          <motion.div
-            className="conn-dock-tooltip"
-            initial={{ opacity: 0, y: 6, scale: 0.92 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.94 }}
-            transition={{ duration: 0.15 }}
-          >
-            <span>{item.title}</span>
-            <span style={{ opacity: 0.75, marginLeft: 4 }}>
-              · {item.ready ? 'Connected' : (item.missing_credentials || []).length ? 'Needs credentials' : (item.signed_in === false && item.auth_kind !== 'none') ? 'Needs sign-in' : 'Not running'}
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
 
 const AUTH_STATES = {
   waiting: {
@@ -1316,7 +1233,7 @@ function ConnectModal({ server, onClose, onLogin }) {
   )
 }
 
-export default function ConnectorsTab({ query = '', newOpen, setNewOpen }) {
+export default function ConnectorsTab({ query = '', setQuery, newOpen, setNewOpen }) {
   const { caps, setCapEnabled, toast, refreshHealth } = useApp()
   const { confirm } = useConfirm()
   const [servers, setServers] = useState([])
@@ -1328,7 +1245,6 @@ export default function ConnectorsTab({ query = '', newOpen, setNewOpen }) {
   const [open, setOpen] = useState(null)
   const [pendingConnect, setPendingConnect] = useState(null)
   const [filter, setFilter] = useState('all')
-  const [localQuery, setLocalQuery] = useState('')
   const [loaded, setLoaded] = useState(false)
   const announced = useRef(new Set())
   const settled = useRef(new Set())
@@ -1604,7 +1520,7 @@ export default function ConnectorsTab({ query = '', newOpen, setNewOpen }) {
     }
   }, [refresh, setCapEnabled, setOpen, toast, setPendingConnect])
 
-  const q = (query || localQuery).trim().toLowerCase()
+  const q = (query || '').trim().toLowerCase()
   const titleOf = useCallback(
     (name) => servers.find((srv) => srv.name === name)?.title || name,
     [servers]
@@ -1813,44 +1729,8 @@ export default function ConnectorsTab({ query = '', newOpen, setNewOpen }) {
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           >
-            {/* Top Page Header (Inspiration UI) */}
-            <div className="plugin-page-head">
-              <div className="plugin-head-titles">
-                <TextReveal as="h1">Plugins</TextReveal>
-                <TextReveal as="p" delay={0.06}>
-                  Work with Amethyst across your favorite tools.
-                </TextReveal>
-              </div>
-              <div className="plugin-head-actions">
-                <div className="plugin-search-pill">
-                  <Icon name="search" size={14} />
-                  <input
-                    value={localQuery}
-                    onChange={(e) => setLocalQuery(e.target.value)}
-                    placeholder="Search plugins..."
-                  />
-                  {localQuery && (
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      onClick={() => setLocalQuery('')}
-                      aria-label="Clear search"
-                    >
-                      <Icon name="x" size={12} />
-                    </button>
-                  )}
-                </div>
-                <motion.button
-                  type="button"
-                  className="plugin-add-custom-btn"
-                  title="Add custom connector"
-                  onClick={() => setNewOpen(true)}
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.94 }}
-                >
-                  <Icon name="plus" size={16} />
-                </motion.button>
-              </div>
+            <div className="cap-actions" data-enter style={{ marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span className="cap-count">{totalInstalled} installed · {totalActive} active</span>
             </div>
 
             {/* Auth Banner Stack for pending authentications */}
@@ -1884,26 +1764,6 @@ export default function ConnectorsTab({ query = '', newOpen, setNewOpen }) {
                     />
                   ))}
                 </AnimatePresence>
-              </div>
-            )}
-
-            {/* Top "Installed" Quick Strip (Inspiration UI) */}
-            {totalInstalled > 0 && (
-              <div className="plugin-installed-section" data-enter>
-                <div className="plugin-installed-label">
-                  <span>Installed</span>
-                  <Icon name="chevron" size={11} />
-                </div>
-                <div className="plugin-installed-dock">
-                  {installedList.map((item, index) => (
-                    <InstalledDockChip
-                      key={item.name}
-                      item={item}
-                      index={index}
-                      onOpen={() => setOpen(item.name)}
-                    />
-                  ))}
-                </div>
               </div>
             )}
 
@@ -1971,8 +1831,10 @@ export default function ConnectorsTab({ query = '', newOpen, setNewOpen }) {
                   {agentTools.length > 0 && (
                     <section data-enter className="plugin-section">
                       <div className="plugin-section-head">
-                        <h2 className="plugin-section-title">Agent Core Tools</h2>
-                        <span className="plugin-section-count">{agentTools.length} tools</span>
+                        <div className="plugin-section-title-wrap">
+                          <h2 className="plugin-section-title">Agent Core Tools</h2>
+                          <span className="plugin-section-badge">{agentTools.length}</span>
+                        </div>
                       </div>
 
                       <div className="plugin-grid">
@@ -2001,8 +1863,10 @@ export default function ConnectorsTab({ query = '', newOpen, setNewOpen }) {
                     return (
                       <section key={catName} data-enter className="plugin-section">
                         <div className="plugin-section-head">
-                          <h2 className="plugin-section-title">{catName}</h2>
-                          <span className="plugin-section-count">{items.length} plugins</span>
+                          <div className="plugin-section-title-wrap">
+                            <h2 className="plugin-section-title">{catName}</h2>
+                            <span className="plugin-section-badge">{items.length}</span>
+                          </div>
                         </div>
 
                         <div className="plugin-grid">
@@ -2074,7 +1938,7 @@ export default function ConnectorsTab({ query = '', newOpen, setNewOpen }) {
               >
                 <Icon name="search" size={24} />
                 <p>No connectors or tools match &ldquo;{q}&rdquo;</p>
-                <button type="button" className="btn btn--small" onClick={() => { setFilter('all'); setLocalQuery('') }}>
+                <button type="button" className="btn btn--small" onClick={() => { setFilter('all'); setQuery?.('') }}>
                   Reset filters
                 </button>
               </motion.div>

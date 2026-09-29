@@ -47,16 +47,16 @@ const THEME_CHOICES = [
 ]
 
 const VENDOR_PRESETS = [
+  { slug: 'kilocode', name: 'Kilo Code', base_url: 'https://api.kilo.ai/api/gateway', default_model: 'stepfun/step-3.7-flash:free', hint: 'Generous multi-model inference gateway' },
+  { slug: 'nvidia', name: 'NVIDIA NIM', base_url: 'https://integrate.api.nvidia.com/v1', default_model: 'nvidia/llama-3.1-nemotron-70b-instruct', hint: 'Generous free tier enterprise microservices' },
+  { slug: 'opencode-zen', name: 'OpenCode Zen', base_url: 'https://opencode.ai/inference/openai/v1', default_model: 'kimi-k2.6', hint: 'OpenCode Console inference (kimi-k2.6, glm-5.1, minimax-m2.7)' },
+  { slug: 'google', name: 'Google Gemini', base_url: 'https://generativelanguage.googleapis.com/v1beta/openai/', default_model: 'gemini-2.0-flash', hint: 'Free tier 1M context Gemini 2.0 Flash' },
+  { slug: 'groq', name: 'Groq', base_url: 'https://api.groq.com/openai/v1', default_model: 'llama-3.3-70b-versatile', hint: 'Ultra-low latency Llama 3.3 70B (free tier)' },
+  { slug: 'openrouter', name: 'OpenRouter', base_url: 'https://openrouter.ai/api/v1', default_model: 'meta-llama/llama-3.3-70b-instruct:free', hint: 'Unified access including generous free models' },
   { slug: 'openai', name: 'OpenAI', base_url: 'https://api.openai.com/v1', default_model: 'gpt-4o', hint: 'Requires an OpenAI API key' },
-  { slug: 'anthropic', name: 'Anthropic', base_url: 'https://api.anthropic.com/v1', default_model: 'claude-3-5-sonnet-20241022', hint: 'Requires an Anthropic API key' },
-  { slug: 'google', name: 'Google Gemini', base_url: 'https://generativelanguage.googleapis.com/v1beta/openai/', default_model: 'gemini-1.5-flash-latest', hint: 'Direct Gemini OpenAI compatibility' },
-  { slug: 'groq', name: 'Groq', base_url: 'https://api.groq.com/openai/v1', default_model: 'llama-3.3-70b-versatile', hint: 'Ultra-low latency Llama & Mixtral' },
+  { slug: 'anthropic', name: 'Anthropic', base_url: 'https://api.anthropic.com/v1', default_model: 'claude-3-7-sonnet-latest', hint: 'Requires an Anthropic API key' },
   { slug: 'mistral', name: 'Mistral AI', base_url: 'https://api.mistral.ai/v1', default_model: 'mistral-large-latest', hint: 'European enterprise frontier models' },
-  { slug: 'nvidia', name: 'NVIDIA NIM', base_url: 'https://integrate.api.nvidia.com/v1', default_model: 'nvidia/llama-3.1-nemotron-70b-instruct', hint: 'Enterprise inference microservices' },
-  { slug: 'kilocode', name: 'Kilo Code', base_url: 'https://api.kilo.ai/api/gateway', default_model: 'stepfun/step-3.7-flash:free', hint: 'Fast multi-model gateway' },
-  { slug: 'opencode-zen', name: 'OpenCode Zen', base_url: '', default_model: '', hint: 'OpenCode inference gateway' },
-  { slug: 'ollama', name: 'Ollama (Local)', base_url: 'http://localhost:11434/v1', default_model: 'llama3:8b', hint: 'Run local open-source models completely offline' },
-  { slug: 'openrouter', name: 'OpenRouter', base_url: 'https://openrouter.ai/api/v1', default_model: 'meta-llama/llama-3.3-70b-instruct:free', hint: 'Unified access to all model endpoints' },
+  { slug: 'ollama', name: 'Ollama (Local)', base_url: 'http://localhost:11434/v1', default_model: 'llama3.2', hint: 'Run local open-source models completely offline' },
   { slug: 'together', name: 'Together AI', base_url: 'https://api.together.xyz/v1', default_model: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', hint: 'Open-weights serverless inference' },
   { slug: 'deepseek', name: 'DeepSeek', base_url: 'https://api.deepseek.com/v1', default_model: 'deepseek-chat', hint: 'DeepSeek V3 and R1 reasoning engines' },
   { slug: 'custom', name: 'Custom OpenAI-Compatible', base_url: '', default_model: '', hint: 'vLLM, LM Studio, TGI, or custom proxy endpoint' },
@@ -1009,8 +1009,22 @@ function Appearance() {
    3. MODELS VIEW (Interactive Accordion, Models Dev Details, Add Provider)
    ========================================================================== */
 
+function LatencyTag({ latency }) {
+  if (latency === undefined) return null
+  const isOff = latency === 'off'
+  const isWarn = typeof latency === 'number' && latency > 800
+  const tone = isOff ? 'bad' : isWarn ? 'warn' : 'ok'
+  return (
+    <span className={`mod-latency-tag mod-latency-tag--${tone}`}>
+      <span className={`mod-status-dot mod-status-dot--${tone}`} />
+      <span>{isOff ? 'Offline' : `${latency}ms`}</span>
+    </span>
+  )
+}
+
 function Models() {
   const { toast } = useApp()
+  const confirm = useConfirm()
   const [providers, setProviders] = useState([])
   const [latencies, setLatencies] = useState({})
   const [pinging, setPinging] = useState(false)
@@ -1094,7 +1108,13 @@ function Models() {
 
   const handleRemove = async (name, e) => {
     e?.stopPropagation?.()
-    if (typeof window !== 'undefined' && window.confirm && !window.confirm(`Remove provider "${name}"?`)) return
+    const ok = await confirm({
+      title: `Remove ${name}?`,
+      description: `Are you sure you want to remove provider "${name}"? This removes its API keys and routing configuration.`,
+      confirmText: 'Remove',
+      destructive: true,
+    })
+    if (!ok) return
     try {
       const deleteFn = api.deleteProvider || api.removeProvider
       await deleteFn(name)
@@ -1160,8 +1180,11 @@ function Models() {
                   <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)', textTransform: 'capitalize' }}>
                     {activeProvider.name}
                   </span>
-                  <Badge tone="live">Primary Route</Badge>
-                  {activeProvider.core && <Badge tone="neutral">Core Gateway</Badge>}
+                  <span className="mod-route-tag">
+                    <span className="mod-status-dot mod-status-dot--live" />
+                    Primary Route
+                  </span>
+                  {activeProvider.core && <span className="mod-core-tag">Core Gateway</span>}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
                   {activeProvider.default_model || activeProvider.model || 'Auto Adaptive Fallback'}
@@ -1170,11 +1193,7 @@ function Models() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              {latencies[activeProvider.name] !== undefined && (
-                <span className={`latency-pill ${latencies[activeProvider.name] === 'off' ? 'latency-pill--bad' : 'latency-pill--ok'}`}>
-                  {latencies[activeProvider.name] === 'off' ? 'Offline' : `${latencies[activeProvider.name]}ms`}
-                </span>
-              )}
+              <LatencyTag latency={latencies[activeProvider.name]} />
 
               {/* Primary Route Picker */}
               {providers.length > 1 && (
@@ -1262,11 +1281,12 @@ function Models() {
                           {p.name}
                         </span>
                         {isPrimary && (
-                          <Badge tone="live" style={{ fontSize: '10px', padding: '1px 6px' }}>
+                          <span className="mod-route-tag" style={{ fontSize: '10.5px', padding: '1px 6px' }}>
+                            <span className="mod-status-dot mod-status-dot--live" />
                             Primary
-                          </Badge>
+                          </span>
                         )}
-                        {p.core && <Badge tone="neutral" style={{ fontSize: '10px', padding: '1px 6px' }}>Core</Badge>}
+                        {p.core && <span className="mod-core-tag" style={{ fontSize: '10.5px', padding: '1px 6px' }}>Core</span>}
                       </div>
                       <span className="set-row-desc" style={{ fontFamily: 'var(--font-mono)', fontSize: '11.5px' }}>
                         {p.default_model || p.model || 'OpenAI Compatible Gateway'}
@@ -1275,13 +1295,7 @@ function Models() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {lat !== undefined && (
-                      <span
-                        className={`latency-pill ${lat === 'off' ? 'latency-pill--bad' : 'latency-pill--ok'}`}
-                      >
-                        {lat === 'off' ? 'Offline' : `${lat}ms`}
-                      </span>
-                    )}
+                    <LatencyTag latency={lat} />
 
                     {!isPrimary && (
                       <button
@@ -1509,8 +1523,8 @@ function EditKeyModal({ provider, onClose, onSaved }) {
     try {
       await api.addProvider({
         name: provider.name,
-        api_key: key.trim(),
-        key: key.trim(),
+        api_key: key.trim() || undefined,
+        key: key.trim() || undefined,
         base_url: url.trim() || undefined,
         default_model: provider.default_model || provider.model,
       })
@@ -1633,8 +1647,8 @@ function AddProviderModal({ onClose, onAdded }) {
     try {
       await api.addProvider({
         name: name.trim().toLowerCase(),
-        api_key: key.trim(),
-        key: key.trim(),
+        api_key: key.trim() || undefined,
+        key: key.trim() || undefined,
         base_url: url.trim() || undefined,
         default_model: model.trim() || undefined,
       })
@@ -2780,7 +2794,8 @@ function Activity() {
   const handleMouseMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect()
     const mouseX = e.clientX - rect.left
-    const ratio = Math.max(0, Math.min(1, mouseX / rect.width))
+    const svgX = (mouseX / rect.width) * 600
+    const ratio = Math.max(0, Math.min(1, (svgX - 24) / 552))
     const idx = Math.min(chartData.points.length - 1, Math.max(0, Math.round(ratio * (chartData.points.length - 1))))
     setHoveredIdx(idx)
   }
@@ -2962,7 +2977,7 @@ function Activity() {
             <motion.div
               className="act-tooltip-card"
               animate={{
-                left: `${(activePoint.x / 600) * 100}%`,
+                left: `${Math.max(14, Math.min(86, (activePoint.x / 600) * 100))}%`,
                 top: `${(activePoint.y / 150) * 100}%`,
               }}
               transition={{ type: 'spring', damping: 28, stiffness: 350 }}
@@ -3092,13 +3107,15 @@ function Activity() {
             gap: 2,
           }}
         >
-          {timelineDays.list.map((day) => {
+          {timelineDays.list.map((day, dayIdx) => {
             const hasRuns = day.cnt > 0
             const isHovered = hoveredTimelineDay?.iso === day.iso
             const dayModelEntries = Object.entries(day.models || {})
             const barHeight = hasRuns
               ? Math.max(16, Math.round((day.cnt / timelineDays.maxCnt) * 64))
               : 2
+            const isNearLeft = dayIdx < 3
+            const isNearRight = dayIdx >= timelineDays.list.length - 3
 
             return (
               <div
@@ -3126,8 +3143,9 @@ function Activity() {
                     style={{
                       position: 'absolute',
                       bottom: barHeight + 8,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
+                      left: isNearLeft ? 0 : isNearRight ? 'auto' : '50%',
+                      right: isNearRight ? 0 : 'auto',
+                      transform: isNearLeft || isNearRight ? 'none' : 'translateX(-50%)',
                       zIndex: 40,
                       background: '#161618',
                       border: '1px solid rgba(255, 255, 255, 0.12)',
@@ -3493,7 +3511,7 @@ function DangerRow({ label, note, confirmLabel, onConfirm }) {
    ========================================================================== */
 
 function About() {
-  const { toast, health } = useApp()
+  const { toast, health, openSetupWizard } = useApp()
   const [checkingUpdate, setCheckingUpdate] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -3559,6 +3577,33 @@ function About() {
               {platformStr}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Setup & Onboarding Wizard */}
+      <div className="set-section-label">Initial Setup & Verification</div>
+      <div className="set-box" style={{ marginBottom: 20 }}>
+        <div className="set-box-row">
+          <div className="set-row-left">
+            <div className="set-row-icon-box">
+              <Icon name="sparkle" size={16} style={{ color: 'var(--accent)' }} />
+            </div>
+            <div className="set-row-text">
+              <span className="set-row-title">Setup Wizard & Splash Screen</span>
+              <span className="set-row-desc">
+                Re-run the initial onboarding wizard to verify API keys, Cloudflare relay, mobile HTTP shortcuts, and system health.
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="set-btn-sm is-primary"
+            onClick={openSetupWizard}
+            style={{ minWidth: 140, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <Icon name="play" size={12} />
+            <span>Launch Wizard</span>
+          </button>
         </div>
       </div>
 

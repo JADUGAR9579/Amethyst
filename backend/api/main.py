@@ -17,7 +17,7 @@ import time
 from contextlib import asynccontextmanager, suppress
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List
 
 import httpx
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request, UploadFile
@@ -819,6 +819,9 @@ from backend.remote import router as remote_router
 
 # Remote control and companion APIs
 app.include_router(remote_router)
+
+from backend.converter import router as converter_router
+app.include_router(converter_router)
 
 
 @app.post("/api/pair/claim")
@@ -1798,22 +1801,20 @@ def add_provider_route(body: AddProvider) -> dict[str, Any]:
     api_key_ref = entry.get("api_key_ref") or default_ref
     key_val = body.api_key if body.api_key is not None else body.key
     if key_val is not None:
-        value = key_val
-        if not value.strip():
-            raise HTTPException(400, "a key cannot be empty")
-        if value != value.strip():
+        if key_val != key_val.strip():
             raise HTTPException(
                 400,
                 "that key has whitespace around it, which would be sent verbatim."
                 " Paste it again without the leading or trailing space.",
             )
-        try:
-            set_secret(api_key_ref, value)
-        except CredentialError as exc:
-            # A host with no keychain -- a container, most often. The message
-            # names the way out; a 500 with a traceback named nothing.
-            raise HTTPException(503, str(exc)) from exc
-        entry["api_key_ref"] = api_key_ref
+        if key_val:
+            try:
+                set_secret(api_key_ref, key_val)
+            except CredentialError as exc:
+                # A host with no keychain -- a container, most often. The message
+                # names the way out; a 500 with a traceback named nothing.
+                raise HTTPException(503, str(exc)) from exc
+            entry["api_key_ref"] = api_key_ref
     elif api_key_ref and get_secret(api_key_ref):
         entry["api_key_ref"] = api_key_ref
 
@@ -2081,8 +2082,16 @@ async def provider_models(name: str) -> dict[str, Any]:
         import httpx
 
         async with httpx.AsyncClient(timeout=8.0) as client:
-            response = await client.get(f"{base}/models", headers=headers(key))
-            response.raise_for_status()
+            try:
+                response = await client.get(f"{base}/models", headers=headers(key))
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 404 and "/openai/v1" in base:
+                    alt_base = base.replace("/openai/v1", "/v1")
+                    response = await client.get(f"{alt_base}/models", headers=headers(key))
+                    response.raise_for_status()
+                else:
+                    raise
             payload = response.json()
     except Exception as exc:
         return {"name": name, "models": [], "reason": f"{type(exc).__name__}: {exc}"}
@@ -2116,9 +2125,11 @@ def remove_provider_route(name: str) -> dict[str, Any]:
     """
     from backend.config import remove_provider
 
-    if not remove_provider(name):
+    clean_name = name.strip()
+    if not remove_provider(clean_name):
         raise HTTPException(404, f"no provider named '{name}' in providers.yaml")
-    availability.forget(name)
+    availability.forget(clean_name)
+    availability.forget(clean_name.lower())
     return {"status": "removed", "name": name}
 
 
@@ -4931,15 +4942,14 @@ async def _index_attachment(target: Path, name: str) -> None:
 class CreateTask(BaseModel):
     title: str
     notes: str | None = None
-    # Natural language, resolved by the scheduling engine against the real
-    # clock -- the same path the agent's tools take, so a task typed by hand and
-    # one created in a turn cannot disagree about what "tomorrow" means.
     due_date_hint: str | None = None
     scheduled_hint: str | None = None
     reminder_hint: str | None = None
     priority: str | None = None
     important: bool = False
     add_to_my_day: bool = False
+    my_day_date: str | None = None
+    checklist_items: List[Dict[str, Any]] | None = None
     list: str | None = None
     duration_estimate_minutes: int | None = None
 
@@ -4951,10 +4961,16 @@ class UpdateTask(BaseModel):
     priority: str | None = None
     important: bool | None = None
     add_to_my_day: bool | None = None
+    my_day_date: str | None = None
+    checklist_items: List[Dict[str, Any]] | None = None
     list: str | None = None
     due_date_hint: str | None = None
+    due_at: str | None = None
+    clear_due: bool = False
     scheduled_hint: str | None = None
     reminder_hint: str | None = None
+    reminder_at: str | None = None
+    clear_reminder: bool = False
     duration_estimate_minutes: int | None = None
 
 
@@ -4970,7 +4986,18 @@ TASK_BUCKETS = ("my_day", "missed", "important", "general", "completed", "all")
 
 
 def _task_row(row: Any) -> dict[str, Any]:
-    return dict(row)
+    if row is None:
+        return {}
+    out = dict(row)
+    raw_chk = out.get("checklist_items")
+    if isinstance(raw_chk, str):
+        try:
+            out["checklist_items"] = json.loads(raw_chk)
+        except Exception:
+            out["checklist_items"] = []
+    elif not isinstance(raw_chk, list):
+        out["checklist_items"] = []
+    return out
 
 
 @app.get("/api/tasks")
@@ -5075,6 +5102,37 @@ async def rename_task_list(list_id: int, body: RenameList) -> dict[str, Any]:
     return dict(repo.get(list_id))
 
 
+@app.delete("/api/task-lists/{list_id}")
+async def delete_task_list(list_id: int) -> dict[str, Any]:
+    from backend.db.repositories import TaskListRepository, TaskRepository
+
+    repo = TaskListRepository()
+    row = repo.get(list_id)
+    if row is None or row["retired_at"] is not None:
+        raise HTTPException(404, f"no list with id {list_id}")
+    if row["is_default"]:
+        raise HTTPException(400, "cannot delete default list")
+
+    my_day_id = TaskRepository().my_day_list_id()
+    if my_day_id is not None and int(row["id"]) == int(my_day_id):
+        raise HTTPException(400, "cannot delete My Day list")
+
+    if row["external_id"]:
+        try:
+            from backend.sync.microsoft_todo import delete_remote_list
+            await delete_remote_list(str(row["external_id"]))
+        except Exception:
+            pass
+
+    # Soft-cancel any tasks still filed in this list so they don't linger
+    task_repo = TaskRepository()
+    for task_row in task_repo.in_list(list_id):
+        task_repo.update(task_row["id"], status="cancelled")
+
+    repo.retire(list_id)
+    return {"status": "deleted", "id": list_id}
+
+
 @app.post("/api/tasks", status_code=201)
 async def create_task(body: CreateTask) -> dict[str, Any]:
     """Add a task by hand.
@@ -5121,31 +5179,33 @@ async def update_task(task_id: int, body: UpdateTask) -> dict[str, Any]:
             priority=body.priority,
             important=body.important,
             add_to_my_day=body.add_to_my_day,
+            my_day_date=body.my_day_date,
+            checklist_items=json.dumps(body.checklist_items) if body.checklist_items is not None else None,
             list_name=body.list,
             due_hint=body.due_date_hint,
+            due_at=body.due_at,
+            clear_due=body.clear_due,
             scheduled_hint=body.scheduled_hint,
             reminder_hint=body.reminder_hint,
+            reminder_at=body.reminder_at,
+            clear_reminder=body.clear_reminder,
             duration_estimate_minutes=body.duration_estimate_minutes,
         )
     except TaskError as exc:
-        # "no task with id N" is a 404; everything else the caller can fix.
         status = 404 if str(exc).startswith("no task with id") else 400
         raise HTTPException(status, str(exc)) from exc
-    return dict(TaskRepository().get(task_id))
+    return _task_row(TaskRepository().get(task_id))
 
 
 @app.delete("/api/tasks/{task_id}")
 async def delete_task(task_id: int) -> dict[str, str]:
     from backend.tasks.service import TaskError, TaskService
 
-    # Cancelled, not deleted: a task mirrored from To Do would come straight
-    # back on the next sync, and a row that reappears is worse than one that
-    # stays and says it was dropped.
     try:
-        await TaskService().cancel(task_id)
+        await TaskService().delete(task_id)
     except TaskError as exc:
         raise HTTPException(404, str(exc)) from exc
-    return {"status": "cancelled", "id": str(task_id)}
+    return {"status": "deleted", "id": str(task_id)}
 
 
 @app.post("/api/tasks/sync")
@@ -6008,6 +6068,8 @@ async def enrich_library_item(item_id: int) -> dict[str, Any]:
         return await LibraryService().enrich(item_id)
     except LibraryError as exc:
         raise HTTPException(404, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(500, f"Enrichment failed: {exc}") from exc
 
 
 @app.get("/api/library/{item_id}/thumbnail")

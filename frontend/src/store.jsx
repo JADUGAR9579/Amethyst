@@ -6,6 +6,7 @@ import { useCompact, usePhone } from './hooks/useMediaQuery.js'
 
 import { safeStorage } from './lib/storage.js'
 import { useSync } from './lib/sync/useSync.js'
+import { notify as toastNotify } from './components/application/notifications'
 
 function pathToId(pathname) {
   if (pathname === '/' || pathname === '/chat') return 'chat'
@@ -170,6 +171,8 @@ function applyTheme(theme) {
   // Dark-family themes: graphite, ink, nocturne, cohere, stripe. Light-family: apple, anthropic, sunshine, paper, sand.
   const isDark = ['graphite', 'ink', 'nocturne', 'cohere', 'stripe'].includes(resolved)
   root.style.colorScheme = isDark ? 'dark' : 'light'
+  root.classList.toggle('dark', isDark)
+  root.classList.toggle('dark-mode', isDark)
   const tag = document.querySelector('meta[name="theme-color"]')
   if (tag) {
     const canvas = getComputedStyle(root).getPropertyValue('--canvas').trim()
@@ -413,7 +416,7 @@ export function AppProvider({ children }) {
   }, [])
 
 
-  const [onboardingDone, setOnboardingDoneRaw] = useState(prefs.onboardingDone ?? true)
+  const [onboardingDone, setOnboardingDoneRaw] = useState(prefs.onboardingDone ?? false)
   const setOnboardingDone = useCallback((value) => {
     setOnboardingDoneRaw(value)
     savePrefs({ onboardingDone: value })
@@ -421,6 +424,7 @@ export function AppProvider({ children }) {
   const openOnboarding = useCallback(() => {
     setOnboardingDone(false)
   }, [setOnboardingDone])
+  const openSetupWizard = openOnboarding
   // Which half of Skills & connectors is open. In the store because the + menu
   // and the palette both send you to one side or the other.
   const [capabilitiesTab, setCapabilitiesTabRaw] = useState(prefs.capabilitiesTab || 'skills')
@@ -588,10 +592,29 @@ export function AppProvider({ children }) {
     return () => watch.removeEventListener('change', relay)
   }, [theme])
 
-  const toast = useCallback((message, tone = 'info') => {
-    const id = Math.random().toString(36).slice(2)
-    setToasts((t) => [...t.filter((x) => x.message !== message), { id, message, tone }])
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4600)
+  const dismissToast = useCallback((id) => {
+    try {
+      toastNotify?.dismiss?.(id)
+    } catch { /* no-op */ }
+    setToasts((t) => t.filter((x) => x.id !== id))
+  }, [])
+
+  const toast = useCallback((payload, tone = 'info') => {
+    let id = null
+    try {
+      id = toastNotify?.show?.(payload, tone)
+    } catch (err) {
+      console.warn('Toast notification failed:', err)
+    }
+    const toastObj = typeof payload === 'string'
+      ? { id: id || Math.random().toString(36).slice(2), message: payload, tone }
+      : { id: id || Math.random().toString(36).slice(2), tone: payload?.tone || tone, ...payload }
+
+    setToasts((t) => [
+      ...t.filter((x) => (id ? x.id !== id : true) && (toastObj.message ? x.message !== toastObj.message : true)),
+      toastObj,
+    ])
+    return id
   }, [])
 
   const refreshHealth = useCallback(async () => {
@@ -823,7 +846,7 @@ export function AppProvider({ children }) {
     view, setView,
     server, retryServer: wakeBackend,
     health, healthError, refreshHealth,
-    toasts, toast,
+    toasts, toast, dismissToast,
     overlay, setOverlay,
     conversations, refreshConvs,
     activeId, setActiveId,
@@ -847,7 +870,7 @@ export function AppProvider({ children }) {
     sendWith, setSendWith,
     archiveChats, setArchiveChats, confirmDestructive, setConfirmDestructive, restoreTabs, setRestoreTabs, showUsage, setShowUsage, draftProvider, setDraftProvider, draftModel, setDraftModel, glassMaterial, setGlassMaterial, spotlightAnimation, setSpotlightAnimation,
     shellConfirm, setShellConfirm, fileConfirm, setFileConfirm, netConfirm, setNetConfirm, resetAllPreferences,
-    onboardingDone, setOnboardingDone, openOnboarding,
+    onboardingDone, setOnboardingDone, openOnboarding, openSetupWizard,
     betaPages, setBetaPages,
     notifyOnDone, setNotifyOnDone, notify,
     capabilitiesTab, setCapabilitiesTab,
@@ -859,7 +882,7 @@ export function AppProvider({ children }) {
     chat: chatRef.current,
     registerChat: (actions) => Object.assign(chatRef.current, actions),
   }), [
-    view, setView, server, health, healthError, refreshHealth, toasts, toast, overlay,
+    view, setView, server, health, healthError, refreshHealth, toasts, toast, dismissToast, overlay,
     conversations, refreshConvs, activeId, setActiveId, caps, refreshCaps,
     setCapEnabled, busyCap, workspace, setWorkspace, sidebar, setSidebar,
     compact, railOpen, toggleRail, closeRail, panel, setPanel, togglePanel,
@@ -875,7 +898,7 @@ export function AppProvider({ children }) {
     sendWith, setSendWith,
     archiveChats, setArchiveChats, confirmDestructive, setConfirmDestructive, restoreTabs, setRestoreTabs, showUsage, setShowUsage, draftProvider, setDraftProvider, draftModel, setDraftModel, glassMaterial, setGlassMaterial, spotlightAnimation, setSpotlightAnimation,
     shellConfirm, fileConfirm, netConfirm, resetAllPreferences,
-    onboardingDone, setOnboardingDone, openOnboarding,
+    onboardingDone, setOnboardingDone, openOnboarding, openSetupWizard,
     betaPages, setBetaPages,
     notifyOnDone, setNotifyOnDone, notify,
     capabilitiesTab, setCapabilitiesTab,
