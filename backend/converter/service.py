@@ -771,8 +771,61 @@ class ConverterService:
             result, _ = engine(str(source))
             if not result:
                 return "(No text detected in image via OCR)"
-            lines = [item[1] for item in result if len(item) > 1 and item[1].strip()]
-            return "\n".join(lines) if lines else "(No text detected in image via OCR)"
+            boxes = []
+            for item in result:
+                if len(item) < 2 or not item[1].strip():
+                    continue
+                coords, text = item[0], item[1].strip()
+                xs, ys = [pt[0] for pt in coords], [pt[1] for pt in coords]
+                boxes.append({
+                    "y_center": (min(ys) + max(ys)) / 2,
+                    "x_min": min(xs),
+                    "x_max": max(xs),
+                    "height": max(ys) - min(ys),
+                    "text": text
+                })
+
+            if not boxes:
+                return "(No text detected in image via OCR)"
+
+            boxes.sort(key=lambda b: b["y_center"])
+            lines, current_line = [], []
+            current_y, line_height = None, 0
+
+            for b in boxes:
+                if current_y is None:
+                    current_line.append(b)
+                    current_y, line_height = b["y_center"], b["height"]
+                else:
+                    if abs(b["y_center"] - current_y) < (line_height * 0.5):
+                        current_line.append(b)
+                        current_y = sum(x["y_center"] for x in current_line) / len(current_line)
+                        line_height = sum(x["height"] for x in current_line) / len(current_line)
+                    else:
+                        lines.append(current_line)
+                        current_line = [b]
+                        current_y, line_height = b["y_center"], b["height"]
+            if current_line:
+                lines.append(current_line)
+
+            total_chars = sum(len(b["text"]) for b in boxes)
+            avg_char_width = sum(b["x_max"] - b["x_min"] for b in boxes) / total_chars if total_chars > 0 else 10
+
+            output_lines = []
+            for line in lines:
+                line.sort(key=lambda b: b["x_min"])
+                line_str, current_x = "", 0
+                for b in line:
+                    spaces = max(0, int((b["x_min"] - current_x) / avg_char_width))
+                    if 0 < spaces < 3:
+                        line_str += " "
+                    elif spaces >= 3:
+                        line_str += " " * spaces
+                    line_str += b["text"]
+                    current_x = b["x_max"]
+                output_lines.append(line_str.rstrip())
+
+            return "\n".join(output_lines)
         except ImportError:
             try:
                 import fitz
