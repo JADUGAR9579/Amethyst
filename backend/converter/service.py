@@ -776,15 +776,19 @@ class ConverterService:
         except ImportError:
             try:
                 import fitz
-                doc = fitz.open(source)
+                # Convert the image to a PDF first so get_textpage_ocr() can work
+                imgdoc = fitz.open(source)
+                pdfbytes = imgdoc.convert_to_pdf()
+                imgdoc.close()
+                doc = fitz.open("pdf", pdfbytes)
                 tp = doc[0].get_textpage_ocr()
                 text = tp.extractText()
                 doc.close()
                 return text.strip() or "(No text detected in image)"
             except Exception as e:
-                return f"(OCR requires rapidocr-onnxruntime: {e})"
+                raise RuntimeError(f"OCR requires rapidocr-onnxruntime, and PyMuPDF fallback failed: {e}")
         except Exception as exc:
-            return f"(OCR extraction error: {exc})"
+            raise RuntimeError(f"OCR extraction error: {exc}")
 
     def _archive_convert(self, source: Path, dest: Path, target: str) -> Path:
         """Convert between archive formats (zip, tar, tar.gz) using Python standard library."""
