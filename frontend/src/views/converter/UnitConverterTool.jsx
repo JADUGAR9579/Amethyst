@@ -304,11 +304,11 @@ export default function UnitConverterTool() {
             </div>
 
             {/* Formula / Result Card */}
-            <div className="p-3.5 rounded-xl bg-[var(--fc-accent-wash)] border border-[var(--fc-accent-soft)] text-xs flex items-center justify-between">
+            <div className="p-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs flex items-center justify-between">
               <span className="text-[var(--fc-text-dim)]">
                 {inputValue || 0} {currentCat.units[fromUnit]?.name} =
               </span>
-              <span className="font-mono font-bold text-[var(--fc-accent)] text-sm">
+              <span className="font-mono font-bold text-sky-400 text-sm">
                 {convertedValue || 0} {currentCat.units[toUnit]?.name}
               </span>
             </div>
@@ -340,8 +340,8 @@ export default function UnitConverterTool() {
                 key={item.key}
                 className={`flex items-center justify-between p-2.5 px-3 rounded-lg border text-xs cursor-pointer transition ${
                   item.key === toUnit
-                    ? 'bg-[var(--fc-accent-wash)] border-[var(--fc-accent-soft)] text-[var(--fc-accent)] font-semibold shadow-xs'
-                    : 'bg-[var(--fc-surface-2)] border-[var(--fc-border)] text-[var(--fc-text)] hover:bg-[var(--fc-surface-hover)]'
+                    ? 'bg-white/[0.08] border-white/20 text-white font-semibold'
+                    : 'bg-white/[0.035] border-white/[0.08] text-[var(--fc-text)] hover:bg-white/[0.06]'
                 }`}
                 onClick={() => setToUnit(item.key)}
               >

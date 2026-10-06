@@ -72,7 +72,7 @@ const ALL_TOOLS_CATALOG = [
     tags: ['PDF', 'DOCX', 'PNG', 'MP4', 'MP3', 'WEBP'],
     icon: 'convert',
     isUniversal: true,
-    accent: '#7132f5',
+    accent: '#14b8a6',
   },
   {
     id: 'pdf-tools',
@@ -162,7 +162,7 @@ const ALL_TOOLS_CATALOG = [
     tags: ['HEX', 'RGB', 'HSL', 'WCAG', 'CONTRAST'],
     icon: 'palette',
     component: 'color-converter',
-    accent: '#d946ef',
+    accent: '#38bdf8',
   },
   {
     id: 'code-formatter',
@@ -242,8 +242,8 @@ export default function Converter() {
   const [activeView, setActiveView] = useState('files')
 
   // Capabilities
-  const [capabilities, setCapabilities] = useState(null)
-  const [loadingCaps, setLoadingCaps] = useState(true)
+  const [_capabilities, setCapabilities] = useState(null)
+  const [_loadingCaps, setLoadingCaps] = useState(true)
 
   // Filters & Search for Directory
   const [activeCategory, setActiveCategory] = useState('all')
@@ -272,7 +272,6 @@ export default function Converter() {
       })
   }, [])
 
-
   // Filter tools based on category tab & search query
   const filteredTools = useMemo(() => {
     return ALL_TOOLS_CATALOG.filter((t) => {
@@ -280,7 +279,7 @@ export default function Converter() {
       const matchQuery = !searchQuery.trim() ||
         t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+        t.tags?.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
       return matchCat && matchQuery
     })
   }, [activeCategory, searchQuery])
@@ -557,14 +556,6 @@ export default function Converter() {
     )
     toast(`Set batch format to .${target} for eligible files`, 'info')
   }, [toast])
-
-  // 60fps GPU compositor spotlight tracking
-  const handleCardPointerMove = useCallback((e) => {
-    const card = e.currentTarget
-    const rect = card.getBoundingClientRect()
-    card.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`)
-    card.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`)
-  }, [])
 
   const handleOpenTool = (toolId) => {
     const tool = ALL_TOOLS_CATALOG.find((t) => t.id === toolId)
@@ -1163,8 +1154,8 @@ export default function Converter() {
               </div>
             )}
 
-            {/* Gapless Bento Tool Directory (Always visible on workbench and directory views) */}
-            {(activeView === 'all' || activeView === 'files') && (
+            {/* Gapless Bento Tool Directory */}
+            {activeView === 'all' && (
               <div className="fc-tools-section">
                 <div className="fc-section-title-row">
                   <h2 className="fc-section-title">Specialized Tool Studios</h2>
@@ -1212,7 +1203,6 @@ export default function Converter() {
                     <div
                       key={tool.id}
                       className="fc-tool-card"
-                      onPointerMove={handleCardPointerMove}
                       onClick={() => handleOpenTool(tool.id)}
                     >
                       <div className="fc-tool-card-top">
@@ -1299,7 +1289,7 @@ export default function Converter() {
                     <img
                       src={api.converterPreviewUrl(previewItem.job_id)}
                       alt={previewItem.filename}
-                      className="max-h-[60vh] max-w-full rounded-lg object-contain shadow-md"
+                      className="max-h-[60vh] max-w-full rounded-lg object-contain"
                     />
                   )}
 

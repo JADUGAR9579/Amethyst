@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
 import { useApp } from '../../store.jsx'
 
@@ -44,7 +44,7 @@ function getFormattedTime(date, timeZone) {
     const isDay = hour >= 6 && hour < 19
 
     return { timeStr, dateStr, isDay }
-  } catch (err) {
+  } catch {
     return { timeStr: 'Invalid Timezone', dateStr: '', isDay: true }
   }
 }
@@ -82,7 +82,7 @@ export default function TimeZoneTool() {
   return (
     <div className="fc-tool-workspace">
       {/* Top Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-[var(--fc-surface)] border border-[var(--fc-border)] shadow-sm mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-[var(--fc-surface)] border border-[var(--fc-border)] mb-6">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex flex-col gap-1">
             <span className="text-xs font-semibold text-[var(--fc-text-dim)] uppercase tracking-wider">Date & Time</span>
@@ -131,8 +131,8 @@ export default function TimeZoneTool() {
               key={zone.id}
               className={`p-4 rounded-xl border transition flex flex-col justify-between gap-2 ${
                 isBase
-                  ? 'bg-[var(--fc-accent-wash)] border-[var(--fc-accent-soft)] shadow-sm'
-                  : 'bg-[var(--fc-surface)] border-[var(--fc-border)] hover:bg-[var(--fc-surface-hover)] shadow-xs'
+                  ? 'bg-white/[0.08] border-white/20'
+                  : 'bg-white/[0.035] border-white/[0.08] hover:bg-white/[0.06]'
               }`}
             >
               <div className="flex items-start justify-between gap-2">
@@ -140,7 +140,7 @@ export default function TimeZoneTool() {
                   <div className="font-semibold text-[var(--fc-text)] text-base flex items-center gap-1.5">
                     <span>{zone.city}</span>
                     {isBase && (
-                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-[var(--fc-accent-wash)] text-[var(--fc-accent)] border border-[var(--fc-accent-soft)]">
+                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/25">
                         Base
                       </span>
                     )}
