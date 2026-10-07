@@ -5,12 +5,12 @@
    ========================================================================== */
 
 :root {
-  --fc-accent: #0ea5e9;
-  --fc-accent-hover: #0284c7;
+  --fc-accent: var(--accent, #7132f5);
+  --fc-accent-hover: var(--accent-hover, #5b1ecf);
   --fc-accent-glow: transparent;
-  --fc-accent-wash: rgba(255, 255, 255, 0.05);
-  --fc-accent-soft: rgba(255, 255, 255, 0.12);
-  --fc-accent-line: rgba(255, 255, 255, 0.2);
+  --fc-accent-wash: var(--accent-wash, rgba(255, 255, 255, 0.05));
+  --fc-accent-soft: var(--accent-soft, rgba(255, 255, 255, 0.12));
+  --fc-accent-line: var(--accent-line, rgba(255, 255, 255, 0.2));
 
   --fc-canvas: var(--canvas, #0c0d10);
   --fc-surface: rgba(255, 255, 255, 0.035);
@@ -168,7 +168,7 @@
   align-items: center;
   gap: 7px;
   padding: 5px 12px;
-  border-radius: 9999px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 11.5px;
@@ -298,6 +298,59 @@
 .fc-studio-quick-select:hover {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Breadcrumb Navigation Bar */
+.fc-breadcrumb-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.fc-breadcrumb-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fc-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px !important;
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--fc-text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.14s ease;
+  box-shadow: none !important;
+}
+
+.fc-back-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--fc-text);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.fc-breadcrumb-trail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.fc-crumb-dim {
+  color: var(--fc-text-faint);
+}
+
+.fc-crumb-active {
+  color: var(--fc-text);
+  font-weight: 600;
 }
 
 /* Fallback Subnav Segmented Bar */
@@ -520,7 +573,7 @@
 }
 
 .fc-btn-pill {
-  border-radius: 9999px !important;
+  border-radius: 8px !important;
 }
 
 .fc-btn-icon-bubble {
@@ -529,7 +582,7 @@
   justify-content: center;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
+  border-radius: 4px;
   background: rgba(255, 255, 255, 0.2);
 }
 
@@ -556,8 +609,9 @@
 }
 
 /* ==========================================================================
-   Buttons
+   Buttons (Rectangle Shape with Rounded Corners · Full Custom Accent Support)
    ========================================================================== */
+.fc-page button,
 .fc-btn {
   position: relative;
   display: inline-flex;
@@ -565,7 +619,7 @@
   justify-content: center;
   gap: 6px;
   padding: 7px 16px;
-  border-radius: 8px;
+  border-radius: 8px !important;
   font-size: 13px;
   font-weight: 550;
   cursor: pointer;
@@ -589,13 +643,15 @@
 }
 
 .fc-btn-primary {
-  background: var(--fc-accent);
-  color: #ffffff !important;
+  background: var(--fc-accent) !important;
+  color: var(--on-accent, #ffffff) !important;
+  border-radius: 8px !important;
   box-shadow: none !important;
 }
 
 .fc-btn-primary:hover:not(:disabled) {
-  background: var(--fc-accent-hover);
+  background: var(--fc-accent-hover) !important;
+  color: var(--on-accent, #ffffff) !important;
   box-shadow: none !important;
 }
 
@@ -603,6 +659,7 @@
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--fc-text);
+  border-radius: 8px !important;
   box-shadow: none !important;
 }
 
@@ -616,12 +673,25 @@
   background: transparent;
   color: var(--fc-text-dim);
   border: none;
+  border-radius: 8px !important;
   box-shadow: none !important;
 }
 
 .fc-btn-danger-ghost:hover:not(:disabled) {
   background: var(--fc-stop-soft);
   color: var(--fc-stop);
+}
+
+.fc-btn-success {
+  background: var(--fc-live) !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+
+.fc-btn-success:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--fc-live) 85%, black) !important;
+  color: #ffffff !important;
 }
 
 /* ==========================================================================
@@ -709,7 +779,7 @@
 
 .fc-target-chip {
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: 6px !important;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--fc-text);
@@ -1067,7 +1137,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 13px;
-  border-radius: 8px;
+  border-radius: 8px !important;
   font-size: 12.5px;
   font-weight: 550;
   background: rgba(255, 255, 255, 0.04);

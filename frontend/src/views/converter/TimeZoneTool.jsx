@@ -140,7 +140,7 @@ export default function TimeZoneTool() {
                   <div className="font-semibold text-[var(--fc-text)] text-base flex items-center gap-1.5">
                     <span>{zone.city}</span>
                     {isBase && (
-                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/25">
+                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-[var(--fc-accent-wash)] text-[var(--fc-accent)] border border-[var(--fc-accent-line)]">
                         Base
                       </span>
                     )}

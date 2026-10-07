@@ -308,7 +308,7 @@ export default function UnitConverterTool() {
               <span className="text-[var(--fc-text-dim)]">
                 {inputValue || 0} {currentCat.units[fromUnit]?.name} =
               </span>
-              <span className="font-mono font-bold text-sky-400 text-sm">
+              <span className="font-mono font-bold text-[var(--fc-accent)] text-sm">
                 {convertedValue || 0} {currentCat.units[toUnit]?.name}
               </span>
             </div>

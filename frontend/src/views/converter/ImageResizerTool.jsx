@@ -186,7 +186,7 @@ export default function ImageResizerTool() {
             <div className="fc-drop-action-row">
               <button
                 type="button"
-                className="fc-btn fc-btn-primary fc-btn-pill"
+                className="fc-btn fc-btn-primary"
                 onClick={(e) => {
                   e.stopPropagation()
                   fileInputRef.current?.click()
