@@ -304,7 +304,7 @@ export default function UnitConverterTool() {
             </div>
 
             {/* Formula / Result Card */}
-            <div className="p-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs flex items-center justify-between">
+            <div className="fc-unit-formula-card">
               <span className="text-[var(--fc-text-dim)]">
                 {inputValue || 0} {currentCat.units[fromUnit]?.name} =
               </span>
@@ -338,11 +338,7 @@ export default function UnitConverterTool() {
             {allEquivalents.map((item) => (
               <div
                 key={item.key}
-                className={`flex items-center justify-between p-2.5 px-3 rounded-lg border text-xs cursor-pointer transition ${
-                  item.key === toUnit
-                    ? 'bg-white/[0.08] border-white/20 text-white font-semibold'
-                    : 'bg-white/[0.035] border-white/[0.08] text-[var(--fc-text)] hover:bg-white/[0.06]'
-                }`}
+                className={`fc-unit-equiv-item${item.key === toUnit ? ' is-active' : ''}`}
                 onClick={() => setToUnit(item.key)}
               >
                 <span className="font-medium truncate max-w-[180px]">{item.name}</span>

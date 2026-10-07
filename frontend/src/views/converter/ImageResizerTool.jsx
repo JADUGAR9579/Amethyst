@@ -417,8 +417,9 @@ export default function ImageResizerTool() {
           {/* Right Panel: Preview & Result */}
           <div className="fc-tool-panel flex flex-col justify-between">
             <div>
-              <div className="fc-panel-title mb-3">Image Preview</div>
-              <div className="p-3 rounded-xl bg-[var(--fc-surface-2)] border border-[var(--fc-border)] flex flex-col items-center justify-center min-h-[260px] overflow-hidden">
+              <div className="fc-panel-title mb-1">Image Preview</div>
+              <p className="fc-panel-desc mb-3">Live canvas preview with target dimensions.</p>
+              <div className="fc-image-preview-box">
                 {filePreview && (
                   <img
                     src={filePreview}

@@ -82,7 +82,7 @@ export default function TimeZoneTool() {
   return (
     <div className="fc-tool-workspace">
       {/* Top Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-[var(--fc-surface)] border border-[var(--fc-border)] mb-6">
+      <div className="fc-tz-header">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex flex-col gap-1">
             <span className="text-xs font-semibold text-[var(--fc-text-dim)] uppercase tracking-wider">Date & Time</span>
@@ -121,7 +121,7 @@ export default function TimeZoneTool() {
       </div>
 
       {/* Grid of World Timezones */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="fc-tz-grid">
         {POPULAR_ZONES.map((zone) => {
           const { timeStr, dateStr, isDay } = getFormattedTime(selectedDate, zone.id)
           const isBase = zone.id === baseZone
@@ -129,14 +129,10 @@ export default function TimeZoneTool() {
           return (
             <div
               key={zone.id}
-              className={`p-4 rounded-xl border transition flex flex-col justify-between gap-2 ${
-                isBase
-                  ? 'bg-white/[0.08] border-white/20'
-                  : 'bg-white/[0.035] border-white/[0.08] hover:bg-white/[0.06]'
-              }`}
+              className={`fc-tz-card${isBase ? ' is-base' : ''}`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-0.5">
                   <div className="font-semibold text-[var(--fc-text)] text-base flex items-center gap-1.5">
                     <span>{zone.city}</span>
                     {isBase && (
@@ -149,7 +145,7 @@ export default function TimeZoneTool() {
                 </div>
 
                 <span
-                  className={`p-1.5 rounded-lg text-sm ${
+                  className={`fc-tz-badge text-sm ${
                     isDay ? 'bg-amber-500/15 text-amber-500' : 'bg-indigo-500/15 text-indigo-400'
                   }`}
                   title={isDay ? 'Daytime' : 'Nighttime'}
@@ -158,11 +154,11 @@ export default function TimeZoneTool() {
                 </span>
               </div>
 
-              <div className="mt-2">
+              <div className="mt-3">
                 <div className="text-2xl font-bold font-mono text-[var(--fc-text)] tracking-tight">
                   {timeStr}
                 </div>
-                <div className="text-xs text-[var(--fc-text-dim)] mt-0.5">{dateStr}</div>
+                <div className="text-xs text-[var(--fc-text-dim)] mt-1">{dateStr}</div>
               </div>
             </div>
           )

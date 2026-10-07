@@ -133,7 +133,7 @@ export default function OcrTool() {
             </div>
 
             {file && (
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--fc-surface-2)] border border-[var(--fc-border)] text-xs mb-4">
+              <div className="fc-list-item-card mb-4">
                 <span className="truncate max-w-[220px] font-semibold text-[var(--fc-text)]">{file.name}</span>
                 <button
                   type="button"

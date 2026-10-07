@@ -156,7 +156,7 @@ export default function CodeFormatterTool() {
       </div>
 
       {/* Editor Controls Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-[var(--fc-surface)] border border-[var(--fc-border)] shadow-sm mb-4">
+      <div className="fc-toolbar-card justify-between mb-4">
         <div className="flex items-center gap-3">
           {lang === 'json' && (
             <div className="flex items-center gap-1.5 text-xs text-[var(--fc-text-dim)]">

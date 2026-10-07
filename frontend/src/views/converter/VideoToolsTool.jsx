@@ -217,7 +217,7 @@ export default function VideoToolsTool() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--fc-surface-2)] border border-[var(--fc-border)] text-xs">
+              <div className="fc-list-item-card">
                 <div className="flex items-center gap-2 truncate">
                   <Icon name={file.type.startsWith('audio/') ? 'speaker' : 'video'} size={18} className="text-[var(--fc-accent)]" />
                   <span className="font-semibold text-[var(--fc-text)] truncate max-w-[200px]">{file.name}</span>
@@ -347,7 +347,10 @@ export default function VideoToolsTool() {
         {/* Right Panel: Preview & Download */}
         <div className="fc-tool-panel flex flex-col justify-between">
           <div>
-            <div className="fc-panel-title mb-3">Media Preview</div>
+            <div className="fc-panel-title mb-1">Media Preview</div>
+            <p className="fc-panel-desc mb-4">
+              Real-time video frame and audio inspection with local player.
+            </p>
             {filePreview ? (
               <video
                 controls
@@ -367,9 +370,12 @@ export default function VideoToolsTool() {
                 </div>
               </div>
             ) : (
-              <div className="p-8 rounded-xl bg-[var(--fc-surface-2)] border border-[var(--fc-border)] flex flex-col items-center justify-center text-center text-[var(--fc-text-dim)] gap-2">
+              <div className="fc-media-preview-placeholder">
                 <Icon name={activeTab === 'audio-converter' ? 'speaker' : 'video'} size={36} className="text-[var(--fc-accent)] opacity-60" />
-                <span className="text-xs">Upload media to see live preview</span>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-sm font-semibold text-[var(--fc-text)]">No Media Loaded</span>
+                  <span className="text-xs text-[var(--fc-text-dim)]">Upload media to see live preview</span>
+                </div>
               </div>
             )}
 

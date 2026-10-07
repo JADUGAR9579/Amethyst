@@ -253,7 +253,7 @@ export default function PdfToolsTool() {
                 {mergeFiles.map((f, idx) => (
                   <div
                     key={`${f.name}-${idx}`}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-[var(--fc-surface-2)] border border-[var(--fc-border)] text-xs text-[var(--fc-text)]"
+                    className="fc-list-item-card text-[var(--fc-text)]"
                   >
                     <div className="flex items-center gap-2 truncate">
                       <span className="font-mono text-[var(--fc-accent)] w-5">{idx + 1}.</span>
@@ -385,7 +385,7 @@ export default function PdfToolsTool() {
               </div>
             ) : (
               <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--fc-surface-2)] border border-[var(--fc-border)] text-xs">
+                <div className="fc-list-item-card">
                   <div className="flex items-center gap-2 truncate">
                     <Icon name="file" size={18} className="text-[var(--fc-accent)]" />
                     <span className="font-semibold text-[var(--fc-text)] truncate max-w-[200px]">{singleFile.name}</span>
@@ -533,7 +533,7 @@ export default function PdfToolsTool() {
                 {imageFiles.map((f, idx) => (
                   <div
                     key={`${f.name}-${idx}`}
-                    className="flex items-center justify-between p-2 rounded-lg bg-[var(--fc-surface-2)] border border-[var(--fc-border)] text-xs text-[var(--fc-text)]"
+                    className="fc-list-item-card text-[var(--fc-text)]"
                   >
                     <span className="truncate max-w-[220px]">{f.name}</span>
                     <button
