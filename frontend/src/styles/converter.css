@@ -4,13 +4,14 @@
    Full Widescreen Responsive Layout · Fluid Grid · Precision Hardware Tokens
    ========================================================================== */
 
-:root {
+:root,
+.fc-page {
   --fc-accent: var(--accent, #7132f5);
-  --fc-accent-hover: var(--accent-hover, #5b1ecf);
-  --fc-accent-glow: transparent;
-  --fc-accent-wash: var(--accent-wash, rgba(255, 255, 255, 0.05));
-  --fc-accent-soft: var(--accent-soft, rgba(255, 255, 255, 0.12));
-  --fc-accent-line: var(--accent-line, rgba(255, 255, 255, 0.2));
+  --fc-accent-hover: var(--accent-hover, color-mix(in srgb, var(--accent, #7132f5) 85%, black));
+  --fc-accent-glow: color-mix(in srgb, var(--accent, #7132f5) 30%, transparent);
+  --fc-accent-wash: var(--accent-wash, color-mix(in srgb, var(--accent, #7132f5) 10%, transparent));
+  --fc-accent-soft: var(--accent-soft, color-mix(in srgb, var(--accent, #7132f5) 18%, transparent));
+  --fc-accent-line: var(--accent-line, color-mix(in srgb, var(--accent, #7132f5) 35%, transparent));
 
   --fc-canvas: var(--canvas, #0c0d10);
   --fc-surface: rgba(255, 255, 255, 0.035);
@@ -249,21 +250,29 @@
   user-select: none;
 }
 
-.fc-subnav-btn:hover {
+.fc-subnav-btn:hover:not(.is-active) {
   color: var(--fc-text);
+  background: var(--fc-accent-wash, rgba(255, 255, 255, 0.05));
 }
 
-.fc-subnav-btn.is-active {
-  color: #ffffff;
+.fc-subnav-btn.is-active,
+.fc-subnav-btn.is-active:hover {
+  color: var(--on-accent, #ffffff) !important;
   font-weight: 600;
+  background: transparent !important;
+}
+
+.fc-subnav-btn.is-active svg,
+.fc-subnav-btn.is-active:hover svg {
+  color: var(--on-accent, #ffffff) !important;
 }
 
 .fc-subnav-pill {
   position: absolute;
   inset: 0;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px !important;
+  background: var(--fc-accent) !important;
+  border: 1px solid var(--fc-accent) !important;
   box-shadow: none !important;
   z-index: 0;
 }
@@ -296,8 +305,8 @@
 }
 
 .fc-studio-quick-select:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.16);
+  background: var(--fc-accent-wash, rgba(255, 255, 255, 0.06));
+  border-color: var(--fc-accent-line, rgba(255, 255, 255, 0.16));
 }
 
 /* Breadcrumb Navigation Bar */
@@ -332,9 +341,9 @@
 }
 
 .fc-back-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--fc-text);
-  border-color: rgba(255, 255, 255, 0.16);
+  background: var(--fc-accent-wash, rgba(255, 255, 255, 0.08)) !important;
+  color: var(--fc-text) !important;
+  border-color: var(--fc-accent-line, rgba(255, 255, 255, 0.16)) !important;
 }
 
 .fc-breadcrumb-trail {
@@ -393,26 +402,29 @@
   user-select: none;
 }
 
-.fc-subnav-tab:hover {
+.fc-subnav-tab:hover:not(.is-active) {
   color: var(--fc-text);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--fc-accent-wash, rgba(255, 255, 255, 0.06));
 }
 
-.fc-subnav-tab.is-active {
-  color: #ffffff !important;
+.fc-subnav-tab.is-active,
+.fc-subnav-tab.is-active:hover {
+  color: var(--on-accent, #ffffff) !important;
   font-weight: 600;
+  background: transparent !important;
 }
 
-.fc-subnav-tab.is-active svg {
-  color: #ffffff !important;
+.fc-subnav-tab.is-active svg,
+.fc-subnav-tab.is-active:hover svg {
+  color: var(--on-accent, #ffffff) !important;
 }
 
 .fc-subnav-active-bg {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--fc-accent) !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--fc-accent) !important;
   box-shadow: none !important;
   z-index: 0;
 }
@@ -642,8 +654,19 @@
   transform: none;
 }
 
+.fc-page button:focus-visible,
+.fc-btn:focus-visible,
+.fc-subnav-btn:focus-visible,
+.fc-cat-tab:focus-visible,
+.fc-mode-tab:focus-visible,
+.fc-back-btn:focus-visible {
+  outline: 2px solid var(--fc-accent) !important;
+  outline-offset: 2px;
+}
+
 .fc-btn-primary {
   background: var(--fc-accent) !important;
+  border: 1px solid var(--fc-accent) !important;
   color: var(--on-accent, #ffffff) !important;
   border-radius: 8px !important;
   box-shadow: none !important;
@@ -651,6 +674,7 @@
 
 .fc-btn-primary:hover:not(:disabled) {
   background: var(--fc-accent-hover) !important;
+  border-color: var(--fc-accent-hover) !important;
   color: var(--on-accent, #ffffff) !important;
   box-shadow: none !important;
 }
@@ -664,8 +688,8 @@
 }
 
 .fc-btn-secondary:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--fc-accent-wash, rgba(255, 255, 255, 0.08)) !important;
+  border-color: var(--fc-accent-line, rgba(255, 255, 255, 0.18)) !important;
   color: var(--fc-text);
 }
 
@@ -790,16 +814,19 @@
   transition: all 0.14s var(--fc-ease);
 }
 
-.fc-target-chip:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
+.fc-target-chip:hover:not(.is-active) {
+  border-color: var(--fc-accent-line, rgba(255, 255, 255, 0.2));
+  background: var(--fc-accent-wash, rgba(255, 255, 255, 0.08));
   color: #ffffff;
 }
 
-.fc-target-chip.is-active {
-  background: rgba(255, 255, 255, 0.16);
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.25);
+.fc-target-chip.is-active,
+.fc-target-chip.is-active:hover {
+  background: var(--fc-accent) !important;
+  color: var(--on-accent, #ffffff) !important;
+  border-color: var(--fc-accent) !important;
+  font-weight: 600;
+  box-shadow: none !important;
 }
 
 .fc-queue-list {
@@ -975,7 +1002,8 @@
 
 .fc-pipeline-options-btn:hover {
   color: var(--fc-text);
-  border-color: var(--fc-border);
+  background: var(--fc-accent-wash, rgba(255, 255, 255, 0.05));
+  border-color: var(--fc-accent-line, var(--fc-border));
 }
 
 .fc-options-drawer {
@@ -1149,16 +1177,61 @@
   box-shadow: none !important;
 }
 
-.fc-cat-tab:hover {
-  background: rgba(255, 255, 255, 0.07);
+.fc-cat-tab:hover:not(.is-active) {
+  background: var(--fc-accent-wash, rgba(255, 255, 255, 0.07));
   color: var(--fc-text);
-  border-color: rgba(255, 255, 255, 0.16);
+  border-color: var(--fc-accent-line, rgba(255, 255, 255, 0.16));
 }
 
-.fc-cat-tab.is-active {
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.22);
+.fc-cat-tab.is-active,
+.fc-cat-tab.is-active:hover {
+  background: var(--fc-accent) !important;
+  color: var(--on-accent, #ffffff) !important;
+  border-color: var(--fc-accent) !important;
+  font-weight: 600;
+  box-shadow: none !important;
+}
+
+.fc-cat-tab.is-active svg,
+.fc-cat-tab.is-active:hover svg {
+  color: var(--on-accent, #ffffff) !important;
+}
+
+/* Mode Tabs */
+.fc-mode-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fc-mode-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 8px !important;
+  font-size: 12.5px;
+  font-weight: 550;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--fc-text-dim);
+  cursor: pointer;
+  transition: all 0.14s ease;
+  box-shadow: none !important;
+}
+
+.fc-mode-tab:hover:not(.is-active) {
+  background: var(--fc-accent-wash, rgba(255, 255, 255, 0.07));
+  color: var(--fc-text);
+  border-color: var(--fc-accent-line, rgba(255, 255, 255, 0.16));
+}
+
+.fc-mode-tab.is-active,
+.fc-mode-tab.is-active:hover {
+  background: var(--fc-accent) !important;
+  color: var(--on-accent, #ffffff) !important;
+  border-color: var(--fc-accent) !important;
   font-weight: 600;
   box-shadow: none !important;
 }
@@ -1200,8 +1273,8 @@
 }
 
 .fc-search-input:focus {
-  border-color: rgba(255, 255, 255, 0.25);
-  box-shadow: none !important;
+  border-color: var(--fc-accent) !important;
+  box-shadow: 0 0 0 2px var(--fc-accent-soft) !important;
 }
 
 .fc-search-clear-btn {
@@ -1212,7 +1285,12 @@
   color: var(--fc-text-faint);
   background: transparent;
   border: none;
+  padding: 4px !important;
   cursor: pointer;
+}
+
+.fc-search-clear-btn:hover {
+  color: var(--fc-text);
 }
 
 /* Fluid Responsive Bento Grid */
@@ -1444,7 +1522,7 @@
 }
 
 .fc-tool-card:hover .fc-tool-action-link {
-  color: #38bdf8;
+  color: var(--fc-accent) !important;
   transform: translateX(2px);
 }
 
@@ -1598,9 +1676,10 @@
 
 .fc-input:focus,
 .fc-select:focus,
-.fc-textarea:focus {
-  border-color: var(--fc-accent);
-  box-shadow: 0 0 0 2px var(--fc-accent-soft);
+.fc-textarea:focus,
+.fc-studio-quick-select:focus {
+  border-color: var(--fc-accent) !important;
+  box-shadow: 0 0 0 2px var(--fc-accent-soft) !important;
 }
 
 .fc-range-slider {
@@ -1883,13 +1962,15 @@
   box-sizing: border-box;
 }
 
-.fc-unit-equiv-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+.fc-unit-equiv-item:hover:not(.is-active) {
+  background: var(--fc-accent-wash, rgba(255, 255, 255, 0.06));
+  border-color: var(--fc-accent-line, rgba(255, 255, 255, 0.16));
 }
 
-.fc-unit-equiv-item.is-active {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
+.fc-unit-equiv-item.is-active,
+.fc-unit-equiv-item.is-active:hover {
+  background: var(--fc-accent-soft, rgba(255, 255, 255, 0.08));
+  border-color: var(--fc-accent-line, rgba(255, 255, 255, 0.2));
   color: #ffffff;
   font-weight: 600;
 }
