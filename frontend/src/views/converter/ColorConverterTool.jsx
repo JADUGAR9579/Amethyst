@@ -116,7 +116,7 @@ export default function ColorConverterTool() {
           <p className="fc-panel-desc">Interactive visual spectrum picker with precision mathematical transforms.</p>
 
           {/* react-colorful visual picker container */}
-          <div className="flex flex-col sm:flex-row items-center gap-6 p-4 rounded-xl bg-[var(--fc-surface-2)] border border-[var(--fc-border)]">
+          <div className="fc-color-picker-card">
             <div className="custom-color-picker-wrap">
               <HexColorPicker color={hexInput} onChange={(c) => setHexInput(c.toUpperCase())} />
             </div>
@@ -171,7 +171,7 @@ export default function ColorConverterTool() {
             ].map((f) => (
               <div
                 key={f.label}
-                className="flex items-center justify-between p-2.5 px-3.5 rounded-xl bg-[var(--fc-surface-2)] border border-[var(--fc-border)] text-sm"
+                className="fc-color-format-row"
               >
                 <span className="text-xs font-mono font-bold text-[var(--fc-text-dim)] w-12">{f.label}</span>
                 <span className="font-mono text-[var(--fc-text)] font-medium flex-1 text-xs">{f.val}</span>
@@ -218,7 +218,7 @@ export default function ColorConverterTool() {
           {/* Dual Ground Matrix */}
           <div className="grid grid-cols-2 gap-3 mt-1">
             {/* White Ground */}
-            <div className="p-3.5 rounded-xl bg-[var(--fc-surface-2)] border border-[var(--fc-border)] flex flex-col gap-1.5">
+            <div className="fc-contrast-card">
               <span className="text-[11px] font-semibold text-[var(--fc-text-dim)] uppercase tracking-wider">
                 Against White
               </span>
@@ -245,7 +245,7 @@ export default function ColorConverterTool() {
             </div>
 
             {/* Black Ground */}
-            <div className="p-3.5 rounded-xl bg-[var(--fc-surface-2)] border border-[var(--fc-border)] flex flex-col gap-1.5">
+            <div className="fc-contrast-card">
               <span className="text-[11px] font-semibold text-[var(--fc-text-dim)] uppercase tracking-wider">
                 Against Black
               </span>

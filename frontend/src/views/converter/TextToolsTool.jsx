@@ -127,7 +127,7 @@ export default function TextToolsTool() {
           { label: 'Lines', val: stats.lines },
           { label: 'Reading Time', val: `~${stats.readingTimeMins} min` },
         ].map((s) => (
-          <div key={s.label} className="p-2.5 rounded-xl bg-[var(--fc-surface)] border border-[var(--fc-border)] text-center shadow-xs">
+          <div key={s.label} className="fc-text-stat-card">
             <div className="text-lg font-bold font-mono text-[var(--fc-text)]">{s.val}</div>
             <div className="text-[10.5px] font-semibold text-[var(--fc-text-dim)] uppercase tracking-wider">{s.label}</div>
           </div>
@@ -135,7 +135,7 @@ export default function TextToolsTool() {
       </div>
 
       {/* Case Converters Row */}
-      <div className="flex flex-wrap items-center gap-1.5 p-3 rounded-xl bg-[var(--fc-surface)] border border-[var(--fc-border)] shadow-xs mb-4">
+      <div className="fc-toolbar-card mb-4">
         <span className="text-xs font-semibold text-[var(--fc-text-dim)] mr-2">Case:</span>
         {[
           { id: 'upper', label: 'UPPERCASE' },
@@ -159,7 +159,7 @@ export default function TextToolsTool() {
       </div>
 
       {/* Find & Replace Row */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-[var(--fc-surface)] border border-[var(--fc-border)] shadow-xs mb-4">
+      <div className="fc-toolbar-card justify-between mb-4">
         <div className="flex flex-wrap items-center gap-2 flex-1">
           <input
             type="text"
